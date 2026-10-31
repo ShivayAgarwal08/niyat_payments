@@ -1,0 +1,142 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Merchant {
+  id               String                 @id @default(uuid())
+  name             String
+  slug             String                 @unique
+  rating           Float                  @default(4.5)
+  isVerified       Boolean                @default(true)
+  payeeAddress     String                 // e.g. merchant@upi or VPA / wallet id
+  deliveryFeePaise Int                    @default(0)
+  platformFeePaise Int                    @default(0)
+  products         Product[]
+  transactions     SimulatedTransaction[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+}
+
+model Product {
+  id                     String                 @id @default(uuid())
+  title                  String
+  category               String                 // Milk, Laptop, Smartphone, Shoes, Groceries
+  brand                  String
+  variant                String                 // e.g. "Taaza Toned", "M2 8GB 256GB"
+  unit                   String                 // "Litre", "Unit", "Kg", "Pair"
+  packageSize            Float                  @default(1.0)
+  basePricePaise         Int                    // in integer paise (₹1 = 100 paise)
+  discountPaise          Int                    @default(0)
+  inStock                Boolean                @default(true)
+  description            String
+  maliciousInstruction   String?                // For normal mode demonstration
+  merchantId             String
+  merchant               Merchant               @relation(fields: [merchantId], references: [id])
+  marketPrices           MarketPrice[]
+  transactions           SimulatedTransaction[]
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+
+  @@index([category])
+  @@index([brand])
+}
+
+model MarketPrice {
+  id              String   @id @default(uuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  pricePaise      Int
+  observedDate    DateTime
+  sourceMerchant  String
+  isDemoData      Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@index([productId, observedDate])
+}
+
+model IntentContract {
+  id                    String                @id @default(uuid())
+  contractId            String                @unique // Generated unique contract ID
+  userRequest           String
+  category              String
+  productTitle          String
+  brand                 String
+  variant               String
+  quantity              Float
+  unit                  String
+  maxBudgetPaise        Int
+  mandatoryRequirements String                // JSON serialized array of requirements
+  permittedSubstitutions String               // JSON serialized array
+  nonce                 String                @unique
+  signature             String
+  expiresAt             DateTime
+  createdAt             DateTime              @default(now())
+  transactions          SimulatedTransaction[]
+
+  @@index([nonce])
+  @@index([contractId])
+}
+
+model UsedNonce {
+  id         String   @id @default(uuid())
+  nonce      String   @unique
+  usedAt     DateTime @default(now())
+  contractId String
+
+  @@index([nonce])
+}
+
+model SimulatedTransaction {
+  id                String          @id @default(uuid())
+  mode              String          // "NORMAL" or "PROTECTED"
+  status            String          // "ALLOW", "ASK", "BLOCK", "UNAUTHORIZED_PURCHASE"
+  userRequest       String
+  productId         String?
+  product           Product?        @relation(fields: [productId], references: [id])
+  productTitle      String
+  merchantId        String?
+  merchant          Merchant?       @relation(fields: [merchantId], references: [id])
+  merchantName      String
+  payeeAddress      String
+  quantity          Float
+  itemPricePaise    Int
+  deliveryFeePaise  Int
+  handlingFeePaise  Int
+  discountPaise     Int
+  totalAmountPaise  Int
+  contractId        String?
+  contract          IntentContract? @relation(fields: [contractId], references: [id])
+  verifierDecision  String?         // "ALLOW", "ASK", "BLOCK"
+  verifierReasons   String?         // JSON serialized string array
+  maliciousPrompt   String?
+  securityExplanation String?
+  isDemoData        Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+
+  @@index([mode])
+  @@index([createdAt])
+}
+
+model SecurityTestRun {
+  id                String   @id @default(uuid())
+  scenarioId        String
+  scenarioName      String
+  attackCategory    String
+  originalIntent    String
+  maliciousPayload  String
+  normalModeResult  String   // JSON serialized
+  niyatModeResult   String   // JSON serialized
+  verifierDecision  String   // "ALLOW", "ASK", "BLOCK"
+  blocked           Boolean
+  reason            String
+  executedAt        DateTime @default(now())
+
+  @@index([scenarioId])
+  @@index([executedAt])
+}
