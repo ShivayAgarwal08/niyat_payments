@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { apiRouter } from './routes/api.js';
 import { ENV } from './config/env.js';
+import { repository } from './db/repository.js';
 
 export const app = express();
 
@@ -53,12 +54,26 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', apiRouter);
 
 // Root route
-app.get('/', (_req: Request, res: Response) => {
+app.get('/', async (_req: Request, res: Response) => {
+  const isProd = process.env.NODE_ENV === 'production';
+  const dbHealth = await repository.checkHealth();
+
+  if (isProd && !dbHealth.ok) {
+    res.status(503).json({
+      name: 'NIYAT Payments API',
+      status: 'unhealthy',
+      error: 'PostgreSQL database connectivity check failed',
+      database: dbHealth
+    });
+    return;
+  }
+
   res.json({
     name: 'NIYAT Payments API',
     tagline: 'The Intent Firewall for AI Shopping Agents',
     status: 'online',
-    version: '1.0.0'
+    version: '1.0.0',
+    database: dbHealth
   });
 });
 

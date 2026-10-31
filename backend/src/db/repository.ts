@@ -50,6 +50,12 @@ export interface SecurityScenarioRecord {
   executedAt: string;
 }
 
+export interface RepositoryHealth {
+  ok: boolean;
+  mode: 'postgresql' | 'memory';
+  error?: string;
+}
+
 export class MarketplaceRepository {
   private prisma: PrismaClient | null = null;
   private usePrisma = false;
@@ -61,19 +67,87 @@ export class MarketplaceRepository {
   private transactions: SimulatedTxRecord[] = [];
   private securityRuns: SecurityScenarioRecord[] = [];
 
-  constructor() {
+  constructor(options?: { forceMemoryOnly?: boolean; prismaClient?: PrismaClient | null }) {
     this.seedDefaults();
-    this.initPrisma();
+    if (options?.prismaClient !== undefined) {
+      this.prisma = options.prismaClient;
+      this.usePrisma = options.prismaClient !== null;
+    } else if (!options?.forceMemoryOnly) {
+      this.initPrisma();
+    }
   }
 
   private initPrisma() {
-    if (process.env.DATABASE_URL && process.env.DATABASE_URL.trim().length > 0) {
+    const isProd = process.env.NODE_ENV === 'production';
+    const dbUrl = process.env.DATABASE_URL?.trim();
+
+    if (isProd && (!dbUrl || dbUrl.length === 0)) {
+      throw new Error('CRITICAL: DATABASE_URL is missing in production. PostgreSQL connection is mandatory.');
+    }
+
+    if (dbUrl && dbUrl.length > 0) {
       try {
         this.prisma = new PrismaClient();
         this.usePrisma = true;
-      } catch (err) {
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`CRITICAL: Could not initialize PrismaClient in production: ${err.message}`);
+        }
         console.warn('Could not initialize PrismaClient, using in-memory store:', err);
         this.usePrisma = false;
+      }
+    }
+  }
+
+  public isUsingPrisma(): boolean {
+    return this.usePrisma && this.prisma !== null;
+  }
+
+  public setPrismaClient(client: PrismaClient | null): void {
+    this.prisma = client;
+    this.usePrisma = client !== null;
+  }
+
+  public async checkHealth(): Promise<RepositoryHealth> {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (this.usePrisma && this.prisma) {
+      try {
+        await this.prisma.$queryRaw`SELECT 1`;
+        return { ok: true, mode: 'postgresql' };
+      } catch (err: any) {
+        return {
+          ok: false,
+          mode: 'postgresql',
+          error: err.message || 'PostgreSQL connectivity check failed'
+        };
+      }
+    }
+
+    if (isProd) {
+      return {
+        ok: false,
+        mode: 'memory',
+        error: 'PostgreSQL client is not active in production. In-memory mode is forbidden in production.'
+      };
+    }
+
+    return { ok: true, mode: 'memory' };
+  }
+
+  public async verifyConnection(): Promise<void> {
+    const health = await this.checkHealth();
+    if (!health.ok) {
+      throw new Error(`PostgreSQL verification failed: ${health.error}`);
+    }
+  }
+
+  public async disconnect(): Promise<void> {
+    if (this.prisma) {
+      try {
+        await this.prisma.$disconnect();
+      } catch {
+        // Safe ignore during shutdown
       }
     }
   }
@@ -100,6 +174,8 @@ export class MarketplaceRepository {
   }
 
   public async getProducts(filter?: { category?: string; search?: string }): Promise<ProductItem[]> {
+    const isProd = process.env.NODE_ENV === 'production';
+
     if (this.usePrisma && this.prisma) {
       try {
         const where: any = {};
@@ -120,43 +196,48 @@ export class MarketplaceRepository {
           include: { merchant: true, marketPrices: true }
         });
 
-        if (dbProducts && dbProducts.length > 0) {
-          return dbProducts.map(p => ({
-            id: p.id,
-            title: p.title,
-            category: p.category,
-            brand: p.brand,
-            variant: p.variant,
-            unit: p.unit,
-            packageSize: p.packageSize,
-            basePricePaise: p.basePricePaise,
-            discountPaise: p.discountPaise,
-            inStock: p.inStock,
-            description: p.description,
-            maliciousInstruction: p.maliciousInstruction,
-            merchantId: p.merchantId,
-            merchant: {
-              id: p.merchant.id,
-              name: p.merchant.name,
-              slug: p.merchant.slug,
-              rating: p.merchant.rating,
-              isVerified: p.merchant.isVerified,
-              payeeAddress: p.merchant.payeeAddress,
-              deliveryFeePaise: p.merchant.deliveryFeePaise,
-              platformFeePaise: p.merchant.platformFeePaise
-            },
-            marketPrices: p.marketPrices.map(mp => ({
-              id: mp.id,
-              pricePaise: mp.pricePaise,
-              observedDate: mp.observedDate.toISOString().split('T')[0],
-              sourceMerchant: mp.sourceMerchant,
-              isDemoData: mp.isDemoData
-            }))
-          }));
+        return dbProducts.map(p => ({
+          id: p.id,
+          title: p.title,
+          category: p.category,
+          brand: p.brand,
+          variant: p.variant,
+          unit: p.unit,
+          packageSize: p.packageSize,
+          basePricePaise: p.basePricePaise,
+          discountPaise: p.discountPaise,
+          inStock: p.inStock,
+          description: p.description,
+          maliciousInstruction: p.maliciousInstruction,
+          merchantId: p.merchantId,
+          merchant: {
+            id: p.merchant.id,
+            name: p.merchant.name,
+            slug: p.merchant.slug,
+            rating: p.merchant.rating,
+            isVerified: p.merchant.isVerified,
+            payeeAddress: p.merchant.payeeAddress,
+            deliveryFeePaise: p.merchant.deliveryFeePaise,
+            platformFeePaise: p.merchant.platformFeePaise
+          },
+          marketPrices: p.marketPrices.map(mp => ({
+            id: mp.id,
+            pricePaise: mp.pricePaise,
+            observedDate: mp.observedDate.toISOString().split('T')[0],
+            sourceMerchant: mp.sourceMerchant,
+            isDemoData: mp.isDemoData
+          }))
+        }));
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`PostgreSQL getProducts query failed in production: ${err.message || 'Unknown error'}`);
         }
-      } catch (err) {
         console.warn('Prisma getProducts query failed, using in-memory store:', err);
       }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory store fallback is forbidden in production. Active PostgreSQL connection required.');
     }
 
     let list = Array.from(this.products.values());
@@ -181,6 +262,8 @@ export class MarketplaceRepository {
   }
 
   public async getProductById(id: string): Promise<ProductItem | null> {
+    const isProd = process.env.NODE_ENV === 'production';
+
     if (this.usePrisma && this.prisma) {
       try {
         const p = await this.prisma.product.findUnique({
@@ -188,43 +271,50 @@ export class MarketplaceRepository {
           include: { merchant: true, marketPrices: true }
         });
 
-        if (p) {
-          return {
-            id: p.id,
-            title: p.title,
-            category: p.category,
-            brand: p.brand,
-            variant: p.variant,
-            unit: p.unit,
-            packageSize: p.packageSize,
-            basePricePaise: p.basePricePaise,
-            discountPaise: p.discountPaise,
-            inStock: p.inStock,
-            description: p.description,
-            maliciousInstruction: p.maliciousInstruction,
-            merchantId: p.merchantId,
-            merchant: {
-              id: p.merchant.id,
-              name: p.merchant.name,
-              slug: p.merchant.slug,
-              rating: p.merchant.rating,
-              isVerified: p.merchant.isVerified,
-              payeeAddress: p.merchant.payeeAddress,
-              deliveryFeePaise: p.merchant.deliveryFeePaise,
-              platformFeePaise: p.merchant.platformFeePaise
-            },
-            marketPrices: p.marketPrices.map(mp => ({
-              id: mp.id,
-              pricePaise: mp.pricePaise,
-              observedDate: mp.observedDate.toISOString().split('T')[0],
-              sourceMerchant: mp.sourceMerchant,
-              isDemoData: mp.isDemoData
-            }))
-          };
+        if (!p) return null;
+
+        return {
+          id: p.id,
+          title: p.title,
+          category: p.category,
+          brand: p.brand,
+          variant: p.variant,
+          unit: p.unit,
+          packageSize: p.packageSize,
+          basePricePaise: p.basePricePaise,
+          discountPaise: p.discountPaise,
+          inStock: p.inStock,
+          description: p.description,
+          maliciousInstruction: p.maliciousInstruction,
+          merchantId: p.merchantId,
+          merchant: {
+            id: p.merchant.id,
+            name: p.merchant.name,
+            slug: p.merchant.slug,
+            rating: p.merchant.rating,
+            isVerified: p.merchant.isVerified,
+            payeeAddress: p.merchant.payeeAddress,
+            deliveryFeePaise: p.merchant.deliveryFeePaise,
+            platformFeePaise: p.merchant.platformFeePaise
+          },
+          marketPrices: p.marketPrices.map(mp => ({
+            id: mp.id,
+            pricePaise: mp.pricePaise,
+            observedDate: mp.observedDate.toISOString().split('T')[0],
+            sourceMerchant: mp.sourceMerchant,
+            isDemoData: mp.isDemoData
+          }))
+        };
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`PostgreSQL getProductById query failed in production: ${err.message || 'Unknown error'}`);
         }
-      } catch (err) {
         console.warn('Prisma getProductById failed, using in-memory store:', err);
       }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory store fallback is forbidden in production. Active PostgreSQL connection required.');
     }
 
     return this.products.get(id) || null;
@@ -308,21 +398,32 @@ export class MarketplaceRepository {
 
   // --- Nonce Store Methods (with Neon PostgreSQL atomic constraint) ---
   public async isNonceUsed(nonce: string): Promise<boolean> {
+    const isProd = process.env.NODE_ENV === 'production';
+
     if (this.usePrisma && this.prisma) {
       try {
         const record = await this.prisma.usedNonce.findUnique({
           where: { nonce }
         });
-        if (record) return true;
-      } catch (err) {
+        return record !== null;
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`PostgreSQL isNonceUsed query failed in production: ${err.message || 'Unknown error'}`);
+        }
         console.warn('Prisma isNonceUsed failed, checking memory:', err);
       }
     }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory nonce store is forbidden in production. PostgreSQL connection required.');
+    }
+
     return this.usedNonces.has(nonce);
   }
 
   public async markNonceUsed(nonce: string, contractId: string): Promise<void> {
-    this.usedNonces.add(nonce);
+    const isProd = process.env.NODE_ENV === 'production';
+
     if (this.usePrisma && this.prisma) {
       try {
         await this.prisma.usedNonce.upsert({
@@ -330,13 +431,26 @@ export class MarketplaceRepository {
           update: {},
           create: { nonce, contractId }
         });
-      } catch (err) {
+        this.usedNonces.add(nonce);
+        return;
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`PostgreSQL markNonceUsed failed in production: ${err.message || 'Unknown error'}`);
+        }
         console.warn('Prisma markNonceUsed failed:', err);
       }
     }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory nonce store is forbidden in production. PostgreSQL connection required.');
+    }
+
+    this.usedNonces.add(nonce);
   }
 
   public async claimNonceAtomic(nonce: string, contractId: string): Promise<boolean> {
+    const isProd = process.env.NODE_ENV === 'production';
+
     if (this.usePrisma && this.prisma) {
       try {
         await this.prisma.usedNonce.create({
@@ -349,11 +463,19 @@ export class MarketplaceRepository {
           this.usedNonces.add(nonce);
           return false; // already claimed in database!
         }
+        if (isProd) {
+          console.error('CRITICAL: PostgreSQL claimNonceAtomic failed in production:', err);
+          throw new Error(`PostgreSQL atomic nonce claim failed in production: ${err.message || 'Database error'}`);
+        }
         console.warn('Prisma claimNonceAtomic unexpected error, using memory fallback:', err);
       }
     }
 
-    // In-memory atomic check
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory nonce store is forbidden in production. PostgreSQL connection required.');
+    }
+
+    // In-memory atomic check (development and test only)
     if (this.usedNonces.has(nonce)) {
       return false; // already claimed
     }
@@ -363,7 +485,9 @@ export class MarketplaceRepository {
 
   // --- Contract Methods ---
   public async saveContract(contract: SignedIntentContract): Promise<void> {
+    const isProd = process.env.NODE_ENV === 'production';
     this.contracts.set(contract.contractId, contract);
+
     if (this.usePrisma && this.prisma) {
       try {
         await this.prisma.intentContract.upsert({
@@ -386,13 +510,23 @@ export class MarketplaceRepository {
             expiresAt: new Date(contract.expiresAt)
           }
         });
-      } catch (err) {
+        return;
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to persist intent contract in production: ${err.message || 'Database error'}`);
+        }
         console.warn('Prisma saveContract failed, stored in memory:', err);
       }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory contract storage is forbidden in production.');
     }
   }
 
   public async getContract(contractId: string): Promise<SignedIntentContract | null> {
+    const isProd = process.env.NODE_ENV === 'production';
+
     if (this.usePrisma && this.prisma) {
       try {
         const c = await this.prisma.intentContract.findUnique({
@@ -417,15 +551,25 @@ export class MarketplaceRepository {
             signature: c.signature
           };
         }
-      } catch (err) {
+        return null;
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to query intent contract in production: ${err.message || 'Database error'}`);
+        }
         console.warn('Prisma getContract failed, checking memory:', err);
       }
     }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory contract store is forbidden in production.');
+    }
+
     return this.contracts.get(contractId) || null;
   }
 
   // --- Transaction Methods (Persistent in Neon DB) ---
   public async recordTransaction(tx: Omit<SimulatedTxRecord, 'id' | 'createdAt'>): Promise<SimulatedTxRecord> {
+    const isProd = process.env.NODE_ENV === 'production';
     let record: SimulatedTxRecord = {
       ...tx,
       id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -473,9 +617,18 @@ export class MarketplaceRepository {
           id: dbTx.id,
           createdAt: dbTx.createdAt.toISOString()
         };
-      } catch (err) {
+        this.transactions.unshift(record);
+        return record;
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to record transaction in production: ${err.message || 'Database error'}`);
+        }
         console.warn('Prisma recordTransaction failed, stored in memory:', err);
       }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory transaction storage is forbidden in production.');
     }
 
     this.transactions.unshift(record);
@@ -483,6 +636,8 @@ export class MarketplaceRepository {
   }
 
   public async getTransactions(limit = 50): Promise<SimulatedTxRecord[]> {
+    const isProd = process.env.NODE_ENV === 'production';
+
     if (this.usePrisma && this.prisma) {
       try {
         const list = await this.prisma.simulatedTransaction.findMany({
@@ -490,35 +645,40 @@ export class MarketplaceRepository {
           take: limit
         });
 
-        if (list && list.length > 0) {
-          return list.map(t => ({
-            id: t.id,
-            mode: t.mode as any,
-            status: t.status as any,
-            userRequest: t.userRequest,
-            productId: t.productId || undefined,
-            productTitle: t.productTitle,
-            merchantId: t.merchantId || undefined,
-            merchantName: t.merchantName,
-            payeeAddress: t.payeeAddress,
-            quantity: t.quantity,
-            itemPricePaise: t.itemPricePaise,
-            deliveryFeePaise: t.deliveryFeePaise,
-            handlingFeePaise: t.handlingFeePaise,
-            discountPaise: t.discountPaise,
-            totalAmountPaise: t.totalAmountPaise,
-            contractId: t.contractId || undefined,
-            verifierDecision: t.verifierDecision || undefined,
-            verifierReasons: t.verifierReasons ? JSON.parse(t.verifierReasons) : undefined,
-            maliciousPrompt: t.maliciousPrompt || undefined,
-            securityExplanation: t.securityExplanation || undefined,
-            isDemoData: t.isDemoData,
-            createdAt: t.createdAt.toISOString()
-          }));
+        return list.map(t => ({
+          id: t.id,
+          mode: t.mode as any,
+          status: t.status as any,
+          userRequest: t.userRequest,
+          productId: t.productId || undefined,
+          productTitle: t.productTitle,
+          merchantId: t.merchantId || undefined,
+          merchantName: t.merchantName,
+          payeeAddress: t.payeeAddress,
+          quantity: t.quantity,
+          itemPricePaise: t.itemPricePaise,
+          deliveryFeePaise: t.deliveryFeePaise,
+          handlingFeePaise: t.handlingFeePaise,
+          discountPaise: t.discountPaise,
+          totalAmountPaise: t.totalAmountPaise,
+          contractId: t.contractId || undefined,
+          verifierDecision: t.verifierDecision || undefined,
+          verifierReasons: t.verifierReasons ? JSON.parse(t.verifierReasons) : undefined,
+          maliciousPrompt: t.maliciousPrompt || undefined,
+          securityExplanation: t.securityExplanation || undefined,
+          isDemoData: t.isDemoData,
+          createdAt: t.createdAt.toISOString()
+        }));
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to fetch transactions in production: ${err.message || 'Database error'}`);
         }
-      } catch (err) {
         console.warn('Prisma getTransactions failed, using memory store:', err);
       }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory transaction store is forbidden in production.');
     }
 
     return this.transactions.slice(0, limit);
@@ -526,6 +686,7 @@ export class MarketplaceRepository {
 
   // --- Security Scenario Methods ---
   public async recordSecurityRun(run: Omit<SecurityScenarioRecord, 'id' | 'executedAt'>): Promise<SecurityScenarioRecord> {
+    const isProd = process.env.NODE_ENV === 'production';
     let record: SecurityScenarioRecord = {
       ...run,
       id: `sec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -553,9 +714,18 @@ export class MarketplaceRepository {
           id: dbRun.id,
           executedAt: dbRun.executedAt.toISOString()
         };
-      } catch (err) {
+        this.securityRuns.unshift(record);
+        return record;
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to record security run in production: ${err.message || 'Database error'}`);
+        }
         console.warn('Prisma recordSecurityRun failed, stored in memory:', err);
       }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory security run store is forbidden in production.');
     }
 
     this.securityRuns.unshift(record);
@@ -563,6 +733,8 @@ export class MarketplaceRepository {
   }
 
   public async getSecurityRuns(limit = 20): Promise<SecurityScenarioRecord[]> {
+    const isProd = process.env.NODE_ENV === 'production';
+
     if (this.usePrisma && this.prisma) {
       try {
         const list = await this.prisma.securityTestRun.findMany({
@@ -570,25 +742,30 @@ export class MarketplaceRepository {
           take: limit
         });
 
-        if (list && list.length > 0) {
-          return list.map(r => ({
-            id: r.id,
-            scenarioId: r.scenarioId,
-            scenarioName: r.scenarioName,
-            attackCategory: r.attackCategory,
-            originalIntent: r.originalIntent,
-            maliciousPayload: r.maliciousPayload,
-            normalModeResult: JSON.parse(r.normalModeResult),
-            niyatModeResult: JSON.parse(r.niyatModeResult),
-            verifierDecision: r.verifierDecision as any,
-            blocked: r.blocked,
-            reason: r.reason,
-            executedAt: r.executedAt.toISOString()
-          }));
+        return list.map(r => ({
+          id: r.id,
+          scenarioId: r.scenarioId,
+          scenarioName: r.scenarioName,
+          attackCategory: r.attackCategory,
+          originalIntent: r.originalIntent,
+          maliciousPayload: r.maliciousPayload,
+          normalModeResult: JSON.parse(r.normalModeResult),
+          niyatModeResult: JSON.parse(r.niyatModeResult),
+          verifierDecision: r.verifierDecision as any,
+          blocked: r.blocked,
+          reason: r.reason,
+          executedAt: r.executedAt.toISOString()
+        }));
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to fetch security runs in production: ${err.message || 'Database error'}`);
         }
-      } catch (err) {
         console.warn('Prisma getSecurityRuns failed, using memory store:', err);
       }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory security run store is forbidden in production.');
     }
 
     return this.securityRuns.slice(0, limit);

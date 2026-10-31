@@ -70,11 +70,27 @@ const SecurityRunSchema = z.object({
 
 // --- Routes ---
 
-// Health Check
-apiRouter.get('/health', (_req: Request, res: Response) => {
+// Health Check (verifies database connectivity in production)
+apiRouter.get('/health', async (_req: Request, res: Response) => {
+  const isProd = process.env.NODE_ENV === 'production';
+  const dbHealth = await repository.checkHealth();
+
+  if (isProd && !dbHealth.ok) {
+    res.status(503).json({
+      status: 'unhealthy',
+      service: 'NIYAT Payments Engine',
+      error: 'PostgreSQL database connectivity check failed',
+      database: dbHealth,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    });
+    return;
+  }
+
   res.json({
     status: 'ok',
     service: 'NIYAT Payments Engine',
+    database: dbHealth,
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
