@@ -82,6 +82,11 @@ const TransferP2PSchema = z.object({
   note: z.string().optional()
 });
 
+const ValidateRecipientSchema = z.object({
+  upiId: z.string().min(1, 'UPI ID required'),
+  ownerId: z.string().optional()
+});
+
 // --- Routes ---
 
 // Health Check (verifies database connectivity in production)
@@ -342,6 +347,17 @@ apiRouter.post('/wallet/transfer', async (req: Request, res: Response, next: Nex
       res.status(400).json({ success: false, code: 'SELF_TRANSFER_FORBIDDEN', error: err.message });
       return;
     }
+    next(err);
+  }
+});
+
+// Validate recipient UPI ID / VPA before transfer
+apiRouter.post('/wallet/validate-recipient', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { upiId, ownerId } = ValidateRecipientSchema.parse(req.body);
+    const result = await repository.validateRecipient(upiId, ownerId || 'user_default');
+    res.json({ success: true, ...result });
+  } catch (err) {
     next(err);
   }
 });

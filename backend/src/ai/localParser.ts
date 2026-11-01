@@ -103,7 +103,7 @@ export class LocalDeterministicParser {
       }
 
       if (maxBudgetPaise === 0) {
-        maxBudgetPaise = Math.round(quantity * 75 * 100); // Default ₹75/L budget if unstated
+        // Do not silently invent a default budget — trigger clarification
       }
     } else if (lower.includes('laptop') || lower.includes('macbook') || lower.includes('thinkpad')) {
       productCategory = 'Laptop';
@@ -133,7 +133,7 @@ export class LocalDeterministicParser {
       }
 
       if (maxBudgetPaise === 0) {
-        maxBudgetPaise = 8500000; // default ₹85,000
+        // Do not invent budget for laptop
       }
     } else if (lower.includes('phone') || lower.includes('smartphone') || lower.includes('iphone') || lower.includes('galaxy')) {
       productCategory = 'Smartphone';
@@ -158,7 +158,7 @@ export class LocalDeterministicParser {
       }
 
       if (maxBudgetPaise === 0) {
-        maxBudgetPaise = 5000000; // default ₹50,000
+        // Do not invent budget for phone
       }
     } else if (lower.includes('shoe') || lower.includes('sneaker') || lower.includes('running')) {
       productCategory = 'Shoes';
@@ -185,7 +185,7 @@ export class LocalDeterministicParser {
       }
 
       if (maxBudgetPaise === 0) {
-        maxBudgetPaise = 450000; // default ₹4,500
+        // Do not invent budget for shoes
       }
     } else if (lower.includes('bread') || lower.includes('egg') || lower.includes('rice') || lower.includes('butter') || lower.includes('coffee')) {
       productCategory = 'Groceries';
@@ -210,7 +210,7 @@ export class LocalDeterministicParser {
       }
 
       if (maxBudgetPaise === 0) {
-        maxBudgetPaise = 30000; // ₹300
+        // Do not invent budget for groceries
       }
     } else {
       // Ambiguous / unsupported query check
@@ -232,6 +232,12 @@ export class LocalDeterministicParser {
       }
     }
 
+    // Check if essential fields are missing to formulate interactive clarification question
+    let ambiguityQuestion: string | undefined = undefined;
+    if (maxBudgetPaise === 0) {
+      ambiguityQuestion = `What is your maximum budget limit for ${quantity} ${unit} of ${productName}? (e.g. "Maximum budget ₹${productCategory === 'Milk' ? '150' : productCategory === 'Laptop' ? '85000' : '500'}")`;
+    }
+
     return {
       productCategory,
       productName,
@@ -243,7 +249,8 @@ export class LocalDeterministicParser {
       mandatoryRequirements,
       optionalPreferences,
       permittedSubstitutions,
-      confidence: 1.0
+      confidence: maxBudgetPaise > 0 ? 1.0 : 0.7,
+      ambiguityQuestion
     };
   }
 }

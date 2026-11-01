@@ -58,15 +58,30 @@ export class ProtectedModeSimulator {
    * market windows, calculating integer landed price, and generating signed MarketAssessment.
    */
   async prepareProtectedPurchase(userPrompt: string): Promise<{
-    contract: SignedIntentContract;
-    marketIntelligence: MarketIntelligenceReport;
-    recommendedOffer: MarketIntelligenceReport['offers'][0];
-    assessment: MarketAssessmentRecord;
+    requiresClarification?: boolean;
+    clarificationQuestion?: string;
+    parsedIntent?: any;
+    contract?: SignedIntentContract;
+    marketIntelligence?: MarketIntelligenceReport;
+    recommendedOffer?: MarketIntelligenceReport['offers'][0];
+    assessment?: MarketAssessmentRecord;
   }> {
     // 1 & 2. Structured intent extraction via AI service (with local fallback)
     const { intent } = await this.aiService.parseIntent(userPrompt);
 
-    // 3. Cryptographically sign intent contract
+    // If budget is unstated or zero, NEVER silently invent one or bind a zero-budget contract!
+    // Demand explicit interactive user clarification.
+    if (!intent.maxBudgetPaise || intent.maxBudgetPaise <= 0 || intent.ambiguityQuestion) {
+      const question = intent.ambiguityQuestion ||
+        `What is your maximum spending limit for ${intent.quantity} ${intent.unit} of ${intent.productName || intent.preferredBrand}? (e.g. "Budget: ₹150")`;
+      return {
+        requiresClarification: true,
+        clarificationQuestion: question,
+        parsedIntent: intent
+      };
+    }
+
+    // 3. Cryptographically sign intent contract only when all required parameters are confirmed
     const contract = createSignedIntentContract(userPrompt, intent);
     await this.repository.saveContract(contract);
 

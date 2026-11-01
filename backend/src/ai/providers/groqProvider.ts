@@ -3,7 +3,7 @@ import { ParsedIntent, ParsedIntentSchema } from '../../types/index.js';
 import { IAIProvider } from '../types.js';
 
 const SYSTEM_PROMPT = `You are NIYAT's Intent Extraction Engine.
-Extract the structured shopping requirements from the user's shopping request.
+Extract the structured shopping requirements from the user's shopping request (English, Hindi or Hinglish).
 Respond with pure JSON object only:
 {
   "productCategory": string (e.g. Milk, Laptop, Smartphone, Shoes, Groceries),
@@ -18,7 +18,11 @@ Respond with pure JSON object only:
   "permittedSubstitutions": string[],
   "confidence": number,
   "ambiguityQuestion": string | null
-}`;
+}
+CRITICAL RULES:
+1. NEVER invent or assume a budget if the user did not specify one! Set maxBudgetPaise: 0 and set ambiguityQuestion asking the user for their maximum budget limit.
+2. Support Hindi, Hinglish and English.
+3. Keep all extracted fields intact.`;
 
 export class GroqProvider implements IAIProvider {
   name: 'groq' = 'groq';

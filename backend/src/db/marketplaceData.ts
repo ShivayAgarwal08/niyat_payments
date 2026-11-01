@@ -300,28 +300,62 @@ export const SEED_PRODUCTS: ProductItem[] = [
   }
 ];
 
-// Historical price observations for selected SKUs (30-day synthetic observations)
+// Historical price observations for selected SKUs (7-day, 30-day, and 90-day synthetic observations)
+// Strictly flagged as SYNTHETIC_DEMO for NIYAT security architecture testing.
 export const SEED_HISTORICAL_PRICES: Array<{
   productId: string;
   pricePaise: number;
   observedDate: string;
   sourceMerchant: string;
 }> = [
-  // Amul Taaza 1L price history
-  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-01', sourceMerchant: 'QuickMart Express' },
+  // --- Amul Taaza 1L price history (Rich 90-day history with 7-day and 30-day density) ---
+  // Baseline 30-day median is ~₹54.00 (5400 paise).
+  // 7-day window observations:
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-31', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-29', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-27', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5300, observedDate: '2026-10-26', sourceMerchant: 'QuickMart Express' },
+
+  // 30-day window observations:
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-22', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-18', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5500, observedDate: '2026-10-14', sourceMerchant: 'QuickMart Express' },
   { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-10', sourceMerchant: 'QuickMart Express' },
-  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-20', sourceMerchant: 'QuickMart Express' },
-  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-30', sourceMerchant: 'QuickMart Express' },
-  { productId: 'prod_amul_taaza_freshbazaar', pricePaise: 5300, observedDate: '2026-10-05', sourceMerchant: 'FreshBazaar Direct' },
-  { productId: 'prod_amul_taaza_freshbazaar', pricePaise: 5200, observedDate: '2026-10-18', sourceMerchant: 'FreshBazaar Direct' },
-  { productId: 'prod_amul_taaza_freshbazaar', pricePaise: 5200, observedDate: '2026-10-29', sourceMerchant: 'FreshBazaar Direct' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5300, observedDate: '2026-10-06', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5400, observedDate: '2026-10-02', sourceMerchant: 'QuickMart Express' },
 
-  // MacBook Air M2 price history
-  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8490000, observedDate: '2026-09-15', sourceMerchant: 'CyberTech Direct' },
-  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8190000, observedDate: '2026-10-02', sourceMerchant: 'CyberTech Direct' },
-  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 7990000, observedDate: '2026-10-25', sourceMerchant: 'CyberTech Direct' },
+  // 90-day window observations:
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5300, observedDate: '2026-09-24', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5300, observedDate: '2026-09-15', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5200, observedDate: '2026-09-02', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5200, observedDate: '2026-08-20', sourceMerchant: 'QuickMart Express' },
+  { productId: 'prod_amul_taaza_quickmart', pricePaise: 5100, observedDate: '2026-08-10', sourceMerchant: 'QuickMart Express' },
 
-  // Nike Revolution price history
-  { productId: 'prod_nike_revolution_retailmega', pricePaise: 349500, observedDate: '2026-09-20', sourceMerchant: 'RetailMega Hyper' },
-  { productId: 'prod_nike_revolution_retailmega', pricePaise: 299500, observedDate: '2026-10-15', sourceMerchant: 'RetailMega Hyper' }
+  // Amul Taaza from competitor FreshBazaar Direct (Cross-merchant comparison):
+  { productId: 'prod_amul_taaza_freshbazaar', pricePaise: 5300, observedDate: '2026-10-30', sourceMerchant: 'FreshBazaar Direct' },
+  { productId: 'prod_amul_taaza_freshbazaar', pricePaise: 5200, observedDate: '2026-10-27', sourceMerchant: 'FreshBazaar Direct' },
+  { productId: 'prod_amul_taaza_freshbazaar', pricePaise: 5200, observedDate: '2026-10-20', sourceMerchant: 'FreshBazaar Direct' },
+  { productId: 'prod_amul_taaza_freshbazaar', pricePaise: 5300, observedDate: '2026-10-12', sourceMerchant: 'FreshBazaar Direct' },
+  { productId: 'prod_amul_taaza_freshbazaar', pricePaise: 5200, observedDate: '2026-10-04', sourceMerchant: 'FreshBazaar Direct' },
+  { productId: 'prod_amul_taaza_freshbazaar', pricePaise: 5100, observedDate: '2026-09-18', sourceMerchant: 'FreshBazaar Direct' },
+
+  // --- MacBook Air M2 price history (Dense 30-day and 90-day observations) ---
+  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8299000, observedDate: '2026-10-30', sourceMerchant: 'CyberTech Direct' },
+  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8299000, observedDate: '2026-10-27', sourceMerchant: 'CyberTech Direct' },
+  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8190000, observedDate: '2026-10-20', sourceMerchant: 'CyberTech Direct' },
+  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8190000, observedDate: '2026-10-15', sourceMerchant: 'CyberTech Direct' },
+  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8390000, observedDate: '2026-10-08', sourceMerchant: 'CyberTech Direct' },
+  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8490000, observedDate: '2026-10-02', sourceMerchant: 'CyberTech Direct' },
+  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8490000, observedDate: '2026-09-22', sourceMerchant: 'CyberTech Direct' },
+  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8590000, observedDate: '2026-09-10', sourceMerchant: 'CyberTech Direct' },
+  { productId: 'prod_macbook_air_m2_cybertech', pricePaise: 8590000, observedDate: '2026-08-25', sourceMerchant: 'CyberTech Direct' },
+
+  // --- Nike Men Revolution 7 price history ---
+  { productId: 'prod_nike_revolution_retailmega', pricePaise: 369500, observedDate: '2026-10-30', sourceMerchant: 'RetailMega Hyper' },
+  { productId: 'prod_nike_revolution_retailmega', pricePaise: 369500, observedDate: '2026-10-26', sourceMerchant: 'RetailMega Hyper' },
+  { productId: 'prod_nike_revolution_retailmega', pricePaise: 359500, observedDate: '2026-10-19', sourceMerchant: 'RetailMega Hyper' },
+  { productId: 'prod_nike_revolution_retailmega', pricePaise: 349500, observedDate: '2026-10-12', sourceMerchant: 'RetailMega Hyper' },
+  { productId: 'prod_nike_revolution_retailmega', pricePaise: 349500, observedDate: '2026-10-05', sourceMerchant: 'RetailMega Hyper' },
+  { productId: 'prod_nike_revolution_retailmega', pricePaise: 329500, observedDate: '2026-09-20', sourceMerchant: 'RetailMega Hyper' },
+  { productId: 'prod_nike_revolution_retailmega', pricePaise: 299500, observedDate: '2026-09-05', sourceMerchant: 'RetailMega Hyper' }
 ];

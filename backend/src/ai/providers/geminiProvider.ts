@@ -3,7 +3,7 @@ import { ParsedIntent, ParsedIntentSchema } from '../../types/index.js';
 import { IAIProvider } from '../types.js';
 
 const SYSTEM_INSTRUCTION = `You are NIYAT's Intent Extraction Engine.
-Extract the structured shopping requirements from the user's shopping request.
+Extract the structured shopping requirements from the user's shopping request (in English, Hindi or Hinglish).
 Output strictly valid JSON matching this schema:
 {
   "productCategory": string (e.g., "Milk", "Laptop", "Smartphone", "Shoes", "Groceries"),
@@ -19,7 +19,11 @@ Output strictly valid JSON matching this schema:
   "confidence": number (between 0.0 and 1.0),
   "ambiguityQuestion": string | null
 }
-Never invent fake brands if user specifies one. Integer paise only for currency (1 Rupee = 100 paise).`;
+CRITICAL RULES:
+1. NEVER invent or infer a budget if the user has not explicitly provided a spending limit or budget! If no budget was specified, set maxBudgetPaise: 0 and set ambiguityQuestion to ask the user in clear, polite language for their target spending limit or maximum budget.
+2. If brand or variant is ambiguous, preserve whatever product and quantity the user requested, and ask for the missing details in ambiguityQuestion.
+3. Support Hindi (e.g., दूध, रुपये, लीटर), Hinglish (e.g., "doodh chahiye", "under 150 rs") and English seamlessly.
+4. Integer paise only for currency (1 Rupee = 100 paise).`;
 
 export class GeminiProvider implements IAIProvider {
   name: 'gemini' = 'gemini';

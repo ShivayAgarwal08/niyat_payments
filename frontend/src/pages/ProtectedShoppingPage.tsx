@@ -16,7 +16,9 @@ import {
   Lock,
   ChevronDown,
   ChevronUp,
-  Check
+  Check,
+  HelpCircle,
+  MessageSquare
 } from 'lucide-react';
 
 export const ProtectedShoppingPage: React.FC = () => {
@@ -38,21 +40,43 @@ export const ProtectedShoppingPage: React.FC = () => {
   const [simulatedPaymentResult, setSimulatedPaymentResult] = useState<any>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
+  // Priority 1: Interactive Intent Clarification State
+  const [clarification, setClarification] = useState<{
+    required: boolean;
+    question: string;
+    parsedIntent?: any;
+  } | null>(null);
+  const [clarificationInput, setClarificationInput] = useState('');
+
   useEffect(() => {
     if ((location.state as any)?.prefilledPrompt) {
       setPrompt((location.state as any).prefilledPrompt);
     }
   }, [location.state]);
 
-  const handlePreparePurchase = async () => {
-    if (!prompt.trim() || loading) return;
+  const handlePreparePurchase = async (customPrompt?: string) => {
+    const activePrompt = customPrompt || prompt;
+    if (!activePrompt.trim() || loading) return;
 
     setLoading(true);
     setError(null);
     setVerifierDecision(null);
     setSimulatedPaymentResult(null);
     try {
-      const data = await api.prepareProtected(prompt);
+      const data = await api.prepareProtected(activePrompt);
+
+      // Check if interactive clarification is demanded
+      if (data.requiresClarification) {
+        setClarification({
+          required: true,
+          question: data.clarificationQuestion || 'Please clarify your spending limit or requirements.',
+          parsedIntent: data.parsedIntent
+        });
+        setLoading(false);
+        return;
+      }
+
+      setClarification(null);
       setContract(data.contract);
       setMarketIntelligence(data.marketIntelligence);
       setAssessment(data.assessment || null);
@@ -63,6 +87,17 @@ export const ProtectedShoppingPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClarificationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clarificationInput.trim()) return;
+
+    // Combine original request with user clarification while preserving extracted intent
+    const combined = `${prompt.trim()}, ${clarificationInput.trim()}`;
+    setPrompt(combined);
+    setClarificationInput('');
+    handlePreparePurchase(combined);
   };
 
   const handleExecutePurchase = async () => {
@@ -108,12 +143,15 @@ export const ProtectedShoppingPage: React.FC = () => {
     setUserAcknowledgedAdvisory(false);
     setVerifierDecision(null);
     setSimulatedPaymentResult(null);
+    setClarification(null);
+    setClarificationInput('');
     setError(null);
   };
 
   const samplePrompts = [
     'Buy one pack of Amul Taaza milk under ₹100.',
-    'Buy 2 packs of Amul butter under ₹200.',
+    'Amul Taaza doodh chahiye (Incomplete Hindi - missing budget)',
+    'Need one pack of Amul Taaza milk (Incomplete - missing budget)',
     'Buy 1 Apple MacBook Air M2 under ₹85,000.'
   ];
 
@@ -169,7 +207,7 @@ export const ProtectedShoppingPage: React.FC = () => {
           {!contract && (
             <>
               <button
-                onClick={handlePreparePurchase}
+                onClick={() => handlePreparePurchase()}
                 disabled={loading || !prompt.trim()}
                 className="fintech-btn-accent w-full py-3 px-4 text-xs flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] disabled:opacity-50 touch-target"
               >
@@ -207,6 +245,123 @@ export const ProtectedShoppingPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* INTERACTIVE INTENT CLARIFICATION BANNER */}
+      {clarification?.required && !contract && (
+        <div className="fintech-card p-5 space-y-4 bg-amber-50/70 border-amber-300 shadow-sm animate-fade-in">
+          <div className="flex items-start justify-between gap-3 pb-3 border-b border-amber-200/80">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <HelpCircle className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                  Interactive Clarification Required
+                </span>
+                <h2 className="text-sm font-bold text-amber-950 mt-0.5">
+                  Intent Incomplete — Spending Limit Unspecified
+                </h2>
+              </div>
+            </div>
+            <button
+              onClick={() => setClarification(null)}
+              className="text-xs text-amber-700 hover:text-amber-900 font-semibold touch-target"
+            >
+              Dismiss
+            </button>
+          </div>
+
+          {/* Clarification prompt question */}
+          <div className="p-3.5 bg-white rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1 shadow-xs">
+            <p className="font-semibold text-[13px] text-amber-950 flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{clarification.question}</span>
+            </p>
+            <p className="text-[11px] text-slate-500 leading-normal">
+              NIYAT's payment firewall never invents or guesses a budget without your consent. No intent contract will be signed until you confirm your maximum budget and requirements.
+            </p>
+          </div>
+
+          {/* Recognized fields so far */}
+          {clarification.parsedIntent && (
+            <div className="grid grid-cols-2 gap-2 text-[11px] bg-amber-100/40 p-2.5 rounded-lg border border-amber-200/60">
+              <div>
+                <span className="text-slate-500 font-medium">Recognized Item:</span>{' '}
+                <span className="font-bold text-slate-800">{clarification.parsedIntent.productName || 'Any'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium">Quantity:</span>{' '}
+                <span className="font-bold text-slate-800">{clarification.parsedIntent.quantity || 1} {clarification.parsedIntent.unit || 'unit'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium">Brand:</span>{' '}
+                <span className="font-bold text-slate-800">{clarification.parsedIntent.preferredBrand || 'Any'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 font-medium">Budget:</span>{' '}
+                <span className="font-bold text-rose-600">Pending Clarification</span>
+              </div>
+            </div>
+          )}
+
+          {/* Quick budget chip helpers */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900">
+              Quick Budget Options:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                'under ₹100',
+                'under ₹150',
+                'under ₹200',
+                'under ₹500',
+                'under ₹1,000',
+                'under ₹85,000'
+              ].map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => {
+                    const combined = `${prompt.trim()}, ${chip}`;
+                    setPrompt(combined);
+                    handlePreparePurchase(combined);
+                  }}
+                  className="text-[11px] font-semibold bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1 rounded-lg transition active:scale-95 shadow-2xs touch-target"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Input form */}
+          <form onSubmit={handleClarificationSubmit} className="space-y-2 pt-1">
+            <div className="relative">
+              <input
+                type="text"
+                value={clarificationInput}
+                onChange={e => setClarificationInput(e.target.value)}
+                placeholder="e.g. under ₹100 or 2 packs under ₹150"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-amber-300 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white touch-target"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={!clarificationInput.trim() || loading}
+                className="flex-1 py-2.5 px-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 touch-target"
+              >
+                {loading ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                )}
+                <span>Confirm & Bind Intent</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Error Banner */}
       {error && (

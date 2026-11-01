@@ -3,7 +3,7 @@ import { ParsedIntent, ParsedIntentSchema } from '../../types/index.js';
 import { IAIProvider } from '../types.js';
 
 const SYSTEM_PROMPT = `You are NIYAT's Intent Extraction Engine.
-Extract the structured shopping requirements from the user's shopping request.
+Extract the structured shopping requirements from the user's shopping request (English, Hindi or Hinglish).
 Respond with pure JSON only:
 {
   "productCategory": string,
@@ -18,7 +18,10 @@ Respond with pure JSON only:
   "permittedSubstitutions": string[],
   "confidence": number,
   "ambiguityQuestion": string | null
-}`;
+}
+CRITICAL RULES:
+1. NEVER invent a budget if unprovided. Set maxBudgetPaise: 0 and set ambiguityQuestion asking for budget or missing requirements.
+2. Preserve all extracted details.`;
 
 export class OpenRouterProvider implements IAIProvider {
   name: 'openrouter' = 'openrouter';

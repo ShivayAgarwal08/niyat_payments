@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { api } from '../services/api.js';
 import { WalletSummary } from '../services/types.js';
 import {
@@ -13,7 +14,10 @@ import {
   ShieldCheck,
   Smartphone,
   Copy,
-  Check
+  Check,
+  Camera,
+  ScanLine,
+  UserCheck
 } from 'lucide-react';
 
 export const PocketPayPage: React.FC = () => {
@@ -28,14 +32,27 @@ export const PocketPayPage: React.FC = () => {
   const [paymentNote, setPaymentNote] = useState('');
   const [sending, setSending] = useState(false);
 
+  // Verified Recipient State (From Scan or Verification)
+  const [validatedRecipient, setValidatedRecipient] = useState<{
+    upiId: string;
+    name: string;
+    type: string;
+    isVerified: boolean;
+  } | null>(null);
+
   // Top Up State
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState('1000');
   const [toppingUp, setToppingUp] = useState(false);
 
-  // QR Modal State
+  // QR Receive Modal State
   const [showQrModal, setShowQrModal] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // QR Scanner Modal State
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [scannerError, setScannerError] = useState<string | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   const fetchWallet = async () => {
     try {
@@ -53,6 +70,109 @@ export const PocketPayPage: React.FC = () => {
   useEffect(() => {
     fetchWallet();
   }, []);
+
+  const extractUpiId = (raw: string): string => {
+    const text = raw.trim();
+    if (text.startsWith('upi://pay')) {
+      try {
+        const url = new URL(text);
+        const pa = url.searchParams.get('pa');
+        if (pa) return pa;
+      } catch {
+        const match = text.match(/[?&]pa=([^&]+)/i);
+        if (match && match[1]) return decodeURIComponent(match[1]);
+      }
+    }
+    return text;
+  };
+
+  const handleQrDecoded = async (rawText: string) => {
+    const extractedUpi = extractUpiId(rawText);
+    setScannerError(null);
+
+    try {
+      const res = await api.validateRecipient(extractedUpi);
+      if (!res.valid) {
+        setScannerError(res.message || 'Unsupported or invalid recipient VPA.');
+        return;
+      }
+
+      if (html5QrCodeRef.current) {
+        try {
+          if (html5QrCodeRef.current.isScanning) {
+            await html5QrCodeRef.current.stop();
+          }
+        } catch {}
+      }
+
+      setRecipientUpi(res.upiId);
+      setValidatedRecipient({
+        upiId: res.upiId,
+        name: res.name,
+        type: res.type,
+        isVerified: res.isVerified
+      });
+      setShowScannerModal(false);
+      setSuccessMsg(`Recipient verified: ${res.name} (${res.upiId}). Enter amount to proceed.`);
+    } catch (err: any) {
+      setScannerError(err?.response?.data?.error || err.message || 'Failed to validate recipient identity');
+    }
+  };
+
+  useEffect(() => {
+    if (!showScannerModal) {
+      if (html5QrCodeRef.current) {
+        try {
+          if (html5QrCodeRef.current.isScanning) {
+            html5QrCodeRef.current.stop().then(() => {
+              html5QrCodeRef.current?.clear();
+              html5QrCodeRef.current = null;
+            }).catch(() => {});
+          } else {
+            html5QrCodeRef.current.clear();
+            html5QrCodeRef.current = null;
+          }
+        } catch {}
+      }
+      return;
+    }
+
+    setScannerError(null);
+    const html5QrCode = new Html5Qrcode("qr-camera-view");
+    html5QrCodeRef.current = html5QrCode;
+
+    const config = { fps: 10, qrbox: { width: 200, height: 200 } };
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText) => {
+        handleQrDecoded(decodedText);
+      },
+      () => {
+        // frame decode failure, harmless
+      }
+    ).catch((err) => {
+      console.warn("Camera start failed:", err);
+      setScannerError("Camera not accessible or permission denied. Use simulated QR presets below to test.");
+    });
+
+    return () => {
+      if (html5QrCodeRef.current) {
+        try {
+          if (html5QrCodeRef.current.isScanning) {
+            html5QrCodeRef.current.stop().then(() => {
+              html5QrCodeRef.current?.clear();
+              html5QrCodeRef.current = null;
+            }).catch(() => {});
+          } else {
+            html5QrCodeRef.current.clear();
+            html5QrCodeRef.current = null;
+          }
+        } catch {}
+      }
+    };
+  }, [showScannerModal]);
 
   const handleSendPayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +201,7 @@ export const PocketPayPage: React.FC = () => {
 
       setSuccessMsg(result.message);
       setRecipientUpi('');
+      setValidatedRecipient(null);
       setAmountRupees('');
       setPaymentNote('');
       await fetchWallet();
@@ -142,13 +263,22 @@ export const PocketPayPage: React.FC = () => {
             Fast, zero-risk demo money transfers with instant settlement
           </p>
         </div>
-        <button
-          onClick={() => setShowQrModal(true)}
-          className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50 touch-target flex items-center justify-center"
-          title="Show My UPI QR"
-        >
-          <QrCode className="w-5 h-5 text-slate-800" />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowScannerModal(true)}
+            className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50 touch-target flex items-center justify-center"
+            title="Scan Recipient QR"
+          >
+            <Camera className="w-5 h-5 text-blue-600" />
+          </button>
+          <button
+            onClick={() => setShowQrModal(true)}
+            className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50 touch-target flex items-center justify-center"
+            title="Show My UPI QR"
+          >
+            <QrCode className="w-5 h-5 text-slate-800" />
+          </button>
+        </div>
       </div>
 
       {/* Wallet Card */}
@@ -191,14 +321,23 @@ export const PocketPayPage: React.FC = () => {
         <div className="flex items-center gap-2 pt-2 border-t border-slate-700/60">
           <button
             onClick={() => setShowTopUpModal(true)}
-            className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition touch-target"
+            className="flex-1 py-2 px-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition touch-target"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>Add Demo Money</span>
+            <span>Add Funds</span>
+          </button>
+          <button
+            onClick={() => setShowScannerModal(true)}
+            className="py-2 px-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-semibold text-xs transition touch-target flex items-center gap-1.5"
+            title="Scan Recipient QR"
+          >
+            <ScanLine className="w-4 h-4 text-blue-300" />
+            <span>Scan QR</span>
           </button>
           <button
             onClick={() => setShowQrModal(true)}
             className="py-2 px-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-semibold text-xs transition touch-target flex items-center gap-1.5"
+            title="Receive Demo Money"
           >
             <QrCode className="w-4 h-4" />
             <span>Receive</span>
@@ -227,9 +366,19 @@ export const PocketPayPage: React.FC = () => {
 
       {/* Send Money Form */}
       <div className="card p-4 space-y-4 shadow-subtle border border-slate-200">
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
-          <Send className="w-4 h-4 text-blue-600" />
-          <h2 className="text-sm font-bold text-slate-900">Send Money (P2P Transfer)</h2>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          <div className="flex items-center gap-2">
+            <Send className="w-4 h-4 text-blue-600" />
+            <h2 className="text-sm font-bold text-slate-900">Send Money (P2P Transfer)</h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowScannerModal(true)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-semibold touch-target transition"
+          >
+            <ScanLine className="w-3.5 h-3.5 text-blue-600" />
+            <span>Scan QR</span>
+          </button>
         </div>
 
         {/* Quick Contacts */}
@@ -242,7 +391,15 @@ export const PocketPayPage: React.FC = () => {
               <button
                 key={c.upi}
                 type="button"
-                onClick={() => setRecipientUpi(c.upi)}
+                onClick={() => {
+                  setRecipientUpi(c.upi);
+                  setValidatedRecipient({
+                    upiId: c.upi,
+                    name: c.name,
+                    type: c.upi.includes('upi') ? 'MERCHANT' : 'USER',
+                    isVerified: true
+                  });
+                }}
                 className={`p-2 rounded-xl text-left border transition text-xs touch-target ${
                   recipientUpi === c.upi
                     ? 'border-blue-500 bg-blue-50/50 text-blue-900 font-bold'
@@ -256,16 +413,53 @@ export const PocketPayPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Verified Recipient Identity Confirmation Banner */}
+        {validatedRecipient && (
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 space-y-1 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-950">
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                <span>Verified Recipient Identity</span>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded">
+                {validatedRecipient.type}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between pt-0.5">
+              <span className="font-bold text-sm text-slate-900">{validatedRecipient.name}</span>
+              <span className="font-mono text-xs text-emerald-800 font-semibold">{validatedRecipient.upiId}</span>
+            </div>
+            <p className="text-[11px] text-slate-600 leading-tight">
+              Protected Mode: funds will NOT be automatically debited upon scan. Please enter amount below and confirm payment.
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSendPayment} className="space-y-3">
           <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">
-              Recipient UPI ID
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-slate-700">
+                Recipient UPI ID
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowScannerModal(true)}
+                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 touch-target"
+              >
+                <ScanLine className="w-3 h-3" />
+                <span>Scan Recipient QR</span>
+              </button>
+            </div>
             <input
               type="text"
               placeholder="e.g. rahul@niyat or shop@upi"
               value={recipientUpi}
-              onChange={e => setRecipientUpi(e.target.value)}
+              onChange={e => {
+                setRecipientUpi(e.target.value);
+                if (validatedRecipient && validatedRecipient.upiId !== e.target.value) {
+                  setValidatedRecipient(null);
+                }
+              }}
               required
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono bg-white touch-target"
             />
@@ -488,6 +682,99 @@ export const PocketPayPage: React.FC = () => {
             <p className="text-[11px] text-slate-400">
               Other users or simulated agents can send demo money to this identifier.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Camera QR Scanner Modal */}
+      {showScannerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in">
+          <div className="card p-5 max-w-sm w-full space-y-4 shadow-elevated border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2">
+                <ScanLine className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-base text-slate-900">Scan Recipient QR</h3>
+              </div>
+              <button
+                onClick={() => setShowScannerModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold touch-target p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Point your camera at a simulated NIYAT recipient QR code. Real banking UPI addresses will be safely rejected.
+            </p>
+
+            {/* Video Viewport Container */}
+            <div className="relative rounded-2xl overflow-hidden bg-slate-950 aspect-square max-w-[260px] mx-auto border-2 border-slate-800 flex items-center justify-center">
+              <div id="qr-camera-view" className="w-full h-full" />
+              {/* Visual Scanner Guide Overlay */}
+              <div className="absolute inset-8 border-2 border-dashed border-blue-400/80 rounded-xl pointer-events-none flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {scannerError && (
+              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span className="font-medium">{scannerError}</span>
+              </div>
+            )}
+
+            {/* Quick Demo Test Buttons */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Simulate QR Scan (Instant Test):
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleQrDecoded('upi://pay?pa=rahul@niyat&pn=Rahul%20Sharma')}
+                  className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-semibold text-left border border-slate-200 touch-target"
+                >
+                  <div className="font-bold truncate">Rahul Sharma</div>
+                  <div className="text-[9px] text-slate-500 font-mono truncate">rahul@niyat</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQrDecoded('upi://pay?pa=priya@niyat&pn=Priya%20Patel')}
+                  className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-semibold text-left border border-slate-200 touch-target"
+                >
+                  <div className="font-bold truncate">Priya Patel</div>
+                  <div className="text-[9px] text-slate-500 font-mono truncate">priya@niyat</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQrDecoded('upi://pay?pa=quickmart@upi&pn=QuickMart%20Groceries')}
+                  className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-800 text-[11px] font-semibold text-left border border-slate-200 touch-target"
+                >
+                  <div className="font-bold truncate">QuickMart</div>
+                  <div className="text-[9px] text-slate-500 font-mono truncate">quickmart@upi</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQrDecoded('upi://pay?pa=hacker@okhdfcbank&pn=Real%20Bank')}
+                  className="p-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 text-[11px] font-semibold text-left border border-rose-200 touch-target"
+                  title="Test rejection of external real UPI"
+                >
+                  <div className="font-bold text-rose-700 truncate">Real Bank VPA</div>
+                  <div className="text-[9px] text-rose-500 font-mono truncate">hacker@okhdfcbank</div>
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowScannerModal(false)}
+              className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition touch-target"
+            >
+              Close Scanner
+            </button>
           </div>
         </div>
       )}

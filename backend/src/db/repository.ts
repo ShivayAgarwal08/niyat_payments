@@ -1364,6 +1364,129 @@ export class MarketplaceRepository {
     return this.getWallet(ownerId);
   }
 
+  public async validateRecipient(upiId: string, currentOwnerId = 'user_default'): Promise<{
+    valid: boolean;
+    upiId: string;
+    name: string;
+    type: 'USER' | 'MERCHANT' | 'SELF';
+    isVerified: boolean;
+    isSelf: boolean;
+    message: string;
+  }> {
+    const cleanUpi = upiId.trim().toLowerCase();
+    const upiRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+$/;
+    if (!upiRegex.test(cleanUpi)) {
+      return {
+        valid: false,
+        upiId: cleanUpi,
+        name: '',
+        type: 'USER',
+        isVerified: false,
+        isSelf: false,
+        message: 'Invalid UPI ID format'
+      };
+    }
+
+    // Check sender self-transfer
+    let senderUpi = 'user@niyat';
+    if (this.usePrisma && this.prisma) {
+      try {
+        const sender = await this.prisma.wallet.findUnique({ where: { ownerId: currentOwnerId } });
+        if (sender) senderUpi = sender.upiId.toLowerCase();
+      } catch {
+        // fallback
+      }
+    } else {
+      const memSender = this.wallets.get(currentOwnerId);
+      if (memSender) senderUpi = memSender.upiId.toLowerCase();
+    }
+
+    if (cleanUpi === senderUpi) {
+      return {
+        valid: false,
+        upiId: cleanUpi,
+        name: 'You (Current Account)',
+        type: 'SELF',
+        isVerified: true,
+        isSelf: true,
+        message: 'Cannot transfer money to yourself'
+      };
+    }
+
+    // Check seed merchants
+    const knownMerchant = SEED_MERCHANTS.find(m => m.payeeAddress.toLowerCase() === cleanUpi);
+    if (knownMerchant) {
+      return {
+        valid: true,
+        upiId: cleanUpi,
+        name: knownMerchant.name,
+        type: 'MERCHANT',
+        isVerified: knownMerchant.isVerified,
+        isSelf: false,
+        message: 'Verified NIYAT Merchant'
+      };
+    }
+
+    // Check Prisma or memory for existing wallet
+    if (this.usePrisma && this.prisma) {
+      try {
+        const dbWallet = await this.prisma.wallet.findFirst({ where: { upiId: cleanUpi } });
+        if (dbWallet) {
+          return {
+            valid: true,
+            upiId: cleanUpi,
+            name: dbWallet.ownerName,
+            type: dbWallet.ownerType === 'MERCHANT' ? 'MERCHANT' : 'USER',
+            isVerified: true,
+            isSelf: false,
+            message: 'Verified NIYAT Simulated Account'
+          };
+        }
+      } catch {
+        // fallback to checks below
+      }
+    } else {
+      const memWallet = Array.from(this.wallets.values()).find(w => w.upiId.toLowerCase() === cleanUpi);
+      if (memWallet) {
+        return {
+          valid: true,
+          upiId: cleanUpi,
+          name: memWallet.ownerName,
+          type: memWallet.ownerType === 'MERCHANT' ? 'MERCHANT' : 'USER',
+          isVerified: true,
+          isSelf: false,
+          message: 'Verified NIYAT Simulated Account'
+        };
+      }
+    }
+
+    // Check supported domain suffixes: only @niyat or @upi are accepted in simulation
+    if (cleanUpi.endsWith('@niyat') || cleanUpi.endsWith('@upi')) {
+      const [handle, domain] = cleanUpi.split('@');
+      const cleanName = handle.charAt(0).toUpperCase() + handle.slice(1);
+      const isMerchant = domain === 'upi' || handle.includes('mart') || handle.includes('store');
+      return {
+        valid: true,
+        upiId: cleanUpi,
+        name: `${cleanName} (${isMerchant ? 'Simulated Merchant' : 'Simulated Peer'})`,
+        type: isMerchant ? 'MERCHANT' : 'USER',
+        isVerified: true,
+        isSelf: false,
+        message: isMerchant ? 'Valid Simulated Merchant VPA' : 'Valid Simulated NIYAT User'
+      };
+    }
+
+    return {
+      valid: false,
+      upiId: cleanUpi,
+      name: '',
+      type: 'USER',
+      isVerified: false,
+      isSelf: false,
+      message: 'External/Real UPI networks are not supported. Only simulated NIYAT VPAs (*@niyat or *@upi) are accepted.'
+    };
+  }
+
   public async transferP2P(params: {
     senderOwnerId?: string;
     recipientUpiId: string;

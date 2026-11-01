@@ -126,5 +126,19 @@ export const api = {
   }): Promise<{ success: boolean; transactionRef: string; message: string; balanceRupees: number }> => {
     const res = await apiClient.post('/wallet/transfer', payload);
     return res.data;
+  },
+
+  validateRecipient: async (upiId: string, ownerId = 'user_default'): Promise<{
+    success: boolean;
+    valid: boolean;
+    upiId: string;
+    name: string;
+    type: 'USER' | 'MERCHANT' | 'SELF';
+    isVerified: boolean;
+    isSelf: boolean;
+    message: string;
+  }> => {
+    const res = await apiClient.post('/wallet/validate-recipient', { upiId, ownerId });
+    return res.data;
   }
 };
