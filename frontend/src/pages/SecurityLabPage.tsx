@@ -5,9 +5,7 @@ import { StatusBadge } from '../components/StatusBadge.js';
 import {
   FlaskConical,
   Play,
-  ShieldCheck,
-  ShieldAlert,
-  CheckCircle2
+  RefreshCw
 } from 'lucide-react';
 
 export const SecurityLabPage: React.FC = () => {
@@ -31,6 +29,7 @@ export const SecurityLabPage: React.FC = () => {
   }, []);
 
   const handleRunScenario = async (scenarioId: string) => {
+    if (runningId !== null || runningAll) return;
     setRunningId(scenarioId);
     try {
       const res = await api.runSecurityScenario(scenarioId);
@@ -43,6 +42,7 @@ export const SecurityLabPage: React.FC = () => {
   };
 
   const handleRunAll = async () => {
+    if (runningAll || runningId !== null) return;
     setRunningAll(true);
     for (const sc of scenarios) {
       try {
@@ -59,22 +59,22 @@ export const SecurityLabPage: React.FC = () => {
   const activeResult = activeTab ? results[activeTab] : null;
 
   return (
-    <div className="px-4 py-5 space-y-4">
+    <div className="px-4 py-6 space-y-4">
       {/* Header */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#FDF5E7] text-[#D99A32] border border-[#F5DFB3] flex items-center gap-1">
-            <FlaskConical className="w-3.5 h-3.5 text-[#D99A32]" />
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+            <FlaskConical className="w-3.5 h-3.5 text-slate-700" />
             Security Sandbox
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82]">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
             10 Test Vectors
           </span>
         </div>
-        <h1 className="text-xl font-black text-[#261633] tracking-tight">
+        <h1 className="text-xl font-black text-slate-900 tracking-tight">
           Adversarial Security Lab
         </h1>
-        <p className="text-xs text-[#766B82] leading-relaxed">
+        <p className="text-xs text-slate-600 leading-relaxed">
           Executes real adversarial attacks against the deterministic Blind Verifier to prove zero prompt injection bypasses.
         </p>
       </div>
@@ -83,191 +83,108 @@ export const SecurityLabPage: React.FC = () => {
       <button
         onClick={handleRunAll}
         disabled={runningAll || runningId !== null}
-        className="niyat-btn-primary w-full py-3 px-4 text-xs flex items-center justify-center gap-2 shadow-card disabled:opacity-50 active:scale-[0.98]"
+        className="fintech-btn-primary w-full py-3.5 px-4 text-xs flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-[0.98] touch-target"
       >
         {runningAll ? (
           <span className="flex items-center gap-2">
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <RefreshCw className="w-4 h-4 animate-spin" />
             <span>Executing All 10 Adversarial Vectors...</span>
           </span>
         ) : (
-          <span className="flex items-center gap-1.5 font-bold">
+          <span className="flex items-center gap-2 font-bold">
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Run All 10 Adversarial Tests</span>
           </span>
         )}
       </button>
 
-      {/* Scenario Horizontal Carousel / Selector Pills */}
-      <div className="space-y-1.5 pt-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82] px-1">
-          Select Attack Scenario:
-        </span>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {scenarios.map((sc, idx) => {
-            const res = results[sc.id];
-            const isSelected = activeTab === sc.id;
-            const isRunning = runningId === sc.id;
-
-            return (
-              <button
-                key={sc.id}
-                onClick={() => setActiveTab(sc.id)}
-                className={`text-left p-2.5 rounded-xl border transition shrink-0 max-w-[190px] ${
-                  isSelected
-                    ? 'border-[#663A91] bg-[#F3EDF9] ring-1 ring-[#663A91]'
-                    : 'border-[#E8E2EF] bg-white hover:border-[#D6CCE3]'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-1 mb-1">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#766B82]">
-                    #{idx + 1}
-                  </span>
-                  <div>
-                    {isRunning ? (
-                      <span className="w-2.5 h-2.5 border-2 border-[#663A91]/30 border-t-[#663A91] rounded-full animate-spin inline-block" />
-                    ) : res ? (
-                      res.blocked ? (
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-[#168451] bg-[#E8F6EE] px-1.5 py-0.5 rounded-full border border-[#C4E8D3]">
-                          BLOCKED
-                        </span>
-                      ) : (
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-[#D64C55] bg-[#FBEDED] px-1.5 py-0.5 rounded-full border border-[#F7D2D5]">
-                          FAILED
-                        </span>
-                      )
-                    ) : (
-                      <span className="text-[9px] text-[#766B82]">Ready</span>
-                    )}
-                  </div>
-                </div>
-                <div className="text-[11px] font-bold text-[#261633] truncate">
-                  {sc.name}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Active Scenario Inspector */}
-      {activeScenario && (
-        <div className="niyat-card p-4 space-y-4 shadow-card">
-          <div className="flex items-start justify-between gap-2 pb-3 border-b border-[#E8E2EF]">
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#663A91]">
-                {activeScenario.category}
-              </span>
-              <h2 className="text-sm font-extrabold text-[#261633]">
-                {activeScenario.name}
-              </h2>
-            </div>
-
+      {/* Scenario Horizontal Selector */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        {scenarios.map(sc => {
+          const res = results[sc.id];
+          const isSelected = activeTab === sc.id;
+          return (
             <button
-              onClick={() => handleRunScenario(activeScenario.id)}
-              disabled={runningId === activeScenario.id}
-              className="niyat-btn-primary px-3 py-1.5 text-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+              key={sc.id}
+              onClick={() => setActiveTab(sc.id)}
+              className={`text-xs px-3 py-1.5 rounded-xl font-semibold transition shrink-0 flex items-center gap-1.5 touch-target ${
+                isSelected
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
             >
-              {runningId === activeScenario.id ? (
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Testing...</span>
-                </span>
-              ) : (
-                <span className="flex items-center gap-1">
-                  <Play className="w-3 h-3 fill-current" />
-                  <span>Execute Test</span>
-                </span>
+              <span>{sc.name}</span>
+              {res && (
+                <span className={`w-2 h-2 rounded-full ${res.blocked ? 'bg-emerald-400' : 'bg-rose-400'}`} />
               )}
             </button>
-          </div>
+          );
+        })}
+      </div>
 
-          {/* Scenario Details */}
-          <div className="space-y-2.5 text-xs">
+      {/* Active Scenario Detail Card */}
+      {activeScenario && (
+        <div className="fintech-card p-5 space-y-4 bg-white">
+          <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-100">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82] block">Attack Description:</span>
-              <p className="text-xs text-[#261633] mt-0.5 leading-relaxed">{activeScenario.description}</p>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Vector: {activeScenario.category}
+              </span>
+              <h3 className="font-bold text-sm text-slate-900">
+                {activeScenario.name}
+              </h3>
             </div>
 
-            <div className="p-3 rounded-xl bg-[#FBEDED] border border-[#F7D2D5]">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#D64C55] block">Malicious Attack Vector:</span>
-              <p className="font-mono text-[11px] text-[#D64C55] font-semibold mt-0.5 whitespace-pre-wrap leading-relaxed">
-                {activeScenario.attackVector}
-              </p>
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-[#F3F1F8] border border-[#E8E2EF]">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82] block">Baseline Prompt:</span>
-              <p className="font-semibold text-xs text-[#261633] mt-0.5">"{activeScenario.defaultPrompt}"</p>
-            </div>
+            {activeResult && (
+              <StatusBadge status={activeResult.verifierDecision} size="sm" />
+            )}
           </div>
 
-          {/* Execution Comparison */}
-          {activeResult ? (
-            <div className="space-y-3 pt-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82]">
-                Execution Comparison
+          <p className="text-xs text-slate-600 leading-relaxed">
+            {activeScenario.description}
+          </p>
+
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Default Test Request:
+            </span>
+            <p className="text-slate-800 font-medium">"{activeScenario.defaultPrompt}"</p>
+          </div>
+
+          <button
+            onClick={() => handleRunScenario(activeScenario.id)}
+            disabled={runningId === activeScenario.id || runningAll}
+            className="fintech-btn-accent w-full py-2.5 px-4 text-xs flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-[0.98] touch-target"
+          >
+            {runningId === activeScenario.id ? (
+              <span className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Executing Attack Vector...</span>
               </span>
+            ) : (
+              <span className="flex items-center gap-2 font-bold">
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Execute This Attack</span>
+              </span>
+            )}
+          </button>
 
-              <div className="space-y-2.5">
-                {/* Normal AI Agent Outcome */}
-                <div className="p-3.5 rounded-2xl border border-[#F7D2D5] bg-[#FBEDED]/40 space-y-1.5">
-                  <div className="flex items-center justify-between font-bold text-xs text-[#D64C55]">
-                    <span className="flex items-center gap-1">
-                      <ShieldAlert className="w-3.5 h-3.5" />
-                      Normal AI Agent
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full bg-[#FBEDED] text-[#D64C55] border border-[#F7D2D5] text-[10px]">
-                      VULNERABLE
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#261633] leading-relaxed">
-                    {activeResult.normalModeResult.explanation}
-                  </p>
-                  <span className="text-[10px] font-bold text-[#D64C55] block">
-                    Result: Unauthorized transaction allowed by standard agent.
-                  </span>
-                </div>
-
-                {/* NIYAT Firewall Outcome */}
-                <div className="p-3.5 rounded-2xl border border-[#C4E8D3] bg-[#E8F6EE]/40 space-y-1.5">
-                  <div className="flex items-center justify-between font-bold text-xs text-[#168451]">
-                    <span className="flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      NIYAT Intent Firewall
-                    </span>
-                    <StatusBadge status={activeResult.verifierDecision} size="sm" />
-                  </div>
-                  <p className="text-[11px] text-[#261633] font-medium leading-relaxed">
-                    Deterministic Decision: <span className="font-bold">{activeResult.verifierDecision}</span>
-                  </p>
-                  <p className="text-[10px] text-[#168451] leading-relaxed">
-                    <span className="font-bold">Firewall Verdict: </span>
-                    {activeResult.reason}
-                  </p>
-                </div>
-              </div>
-
-              {/* Status Banner — Deep Plum Panel */}
-              <div className="niyat-card-plum p-3.5 text-xs space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#E8E2EF]/70 block">
-                  Blind Verifier Audit Result
+          {/* Test Result Breakdown */}
+          {activeResult && (
+            <div className={`p-4 rounded-xl border space-y-2 text-xs ${
+              activeResult.blocked
+                ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900'
+                : 'bg-rose-50 border-rose-200 text-rose-900'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-xs">
+                  {activeResult.blocked ? 'ATTACK BLOCKED BY BLIND VERIFIER' : 'UNEXPECTED BYPASS'}
                 </span>
-                <p className="font-mono text-xs font-bold text-white flex items-center gap-1.5">
-                  {activeResult.blocked ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 text-[#168451] shrink-0" />
-                      <span>ATTACK DEFLECTED — Payment Blocked Deterministically</span>
-                    </>
-                  ) : (
-                    <span>FAILED</span>
-                  )}
-                </p>
+                <span className="text-[10px] font-mono">{activeResult.verifierDecision}</span>
               </div>
-            </div>
-          ) : (
-            <div className="py-8 text-center text-xs text-[#766B82] border border-dashed border-[#E8E2EF] rounded-2xl">
-              Tap "Execute Test" or "Run All 10 Tests" to run this adversarial vector against the Blind Verifier.
+              <p className="leading-snug">
+                {activeResult.reason}
+              </p>
             </div>
           )}
         </div>

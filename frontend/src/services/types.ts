@@ -187,6 +187,8 @@ export interface MarketIntelligenceReport {
 export interface NormalSimulationResult {
   isEducationalVulnerableSimulation: true;
   originalUserIntent: string;
+  scenarioId?: 'UNAUTHORIZED_PURCHASE' | 'ACCIDENTAL_SUBSCRIPTION' | 'PAYMENT_REDIRECT';
+  scenarioTitle?: string;
   extractedGoal: {
     category: string;
     product: string;
@@ -202,10 +204,24 @@ export interface NormalSimulationResult {
   };
   attackPayloadDetected: string;
   manipulatedAction: {
-    manipulationType: 'PAYMENT_REDIRECT' | 'AMOUNT_INFLATION' | 'UNAUTHORIZED_SUBSCRIPTION' | 'QUANTITY_INFLATION';
+    manipulationType: 'UNAUTHORIZED_PURCHASE' | 'ACCIDENTAL_SUBSCRIPTION' | 'PAYMENT_REDIRECT' | 'AMOUNT_INFLATION' | 'UNAUTHORIZED_SUBSCRIPTION' | 'QUANTITY_INFLATION';
     divertedPayee: string;
     manipulatedAmountPaise: number;
     explanation: string;
+  };
+  subscriptionDetails?: {
+    planName: string;
+    recurringAmountPaise: number;
+    frequency: string;
+    billingCycle: string;
+    isSimulated: true;
+    cancellationNotice: string;
+  };
+  diversionDetails?: {
+    intendedMerchant: string;
+    intendedPayee: string;
+    divertedMerchant: string;
+    divertedPayee: string;
   };
   simulatedPaymentExecution: {
     executed: boolean;
@@ -214,6 +230,12 @@ export interface NormalSimulationResult {
     recipientPayee: string;
     status: 'UNAUTHORIZED_SIMULATED_PAYMENT';
     timestamp: string;
+  };
+  whatWentWrong?: string;
+  simpleComparison?: {
+    userRequested: string;
+    agentDid: string;
+    whyDangerous: string;
   };
   securityFailureAnalysis: {
     vulnerability: string;

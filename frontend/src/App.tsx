@@ -16,9 +16,9 @@ const AppLayout: React.FC = () => {
   const isSplash = location.pathname === '/';
 
   return (
-    <div className="min-h-screen bg-[#ECE8F4] flex justify-center items-start sm:py-6 selection:bg-[#F3EDF9] selection:text-[#663A91]">
-      {/* Mobile App Shell — Max Width 540px, Centered with Subtle Shadow on Larger Displays */}
-      <div className="w-full max-w-[540px] min-h-screen sm:min-h-[92vh] bg-[#F3F1F8] sm:rounded-[32px] sm:shadow-plum sm:border sm:border-[#E8E2EF] flex flex-col relative overflow-x-hidden">
+    <div className="min-h-screen bg-slate-100 flex justify-center items-start sm:py-6 selection:bg-blue-100 selection:text-blue-900">
+      {/* Mobile App Container — Max Width 540px, Centered on Desktop */}
+      <div className="w-full max-w-[540px] min-h-screen sm:min-h-[92vh] bg-[#F8FAFC] sm:rounded-[28px] sm:shadow-md sm:border sm:border-slate-200 flex flex-col relative overflow-x-hidden">
         {!isSplash && <Navbar />}
         <main className={`flex-1 ${!isSplash ? 'pb-24' : ''}`}>
           <Routes>

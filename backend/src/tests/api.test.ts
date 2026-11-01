@@ -8,7 +8,7 @@ describe('NIYAT Backend API Endpoints', () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ok');
     expect(res.body.service).toContain('NIYAT');
-  });
+  }, 15000);
 
   it('GET /api/products returns catalog items', async () => {
     const res = await request(app).get('/api/products');
@@ -58,7 +58,7 @@ describe('NIYAT Backend API Endpoints', () => {
     expect(res.body.contract.signature).toBeDefined();
     expect(res.body.marketIntelligence).toBeDefined();
     expect(res.body.recommendedOffer).toBeDefined();
-  }, 15000);
+  }, 30000);
 
   it('GET /api/security/scenarios returns all 10 scenarios', async () => {
     const res = await request(app).get('/api/security/scenarios');

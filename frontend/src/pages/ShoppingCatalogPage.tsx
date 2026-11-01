@@ -5,13 +5,12 @@ import { ProductItem } from '../services/types.js';
 import { PriceFormatter } from '../components/PriceFormatter.js';
 import {
   Search,
-  AlertTriangle,
-  Eye,
   ShieldCheck,
   ShoppingBag,
   Store,
-  ArrowRight,
-  X
+  X,
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 
 export const ShoppingCatalogPage: React.FC = () => {
@@ -53,48 +52,48 @@ export const ShoppingCatalogPage: React.FC = () => {
   };
 
   return (
-    <div className="px-4 py-5 space-y-4">
-      {/* Header & Demo Data Badge */}
+    <div className="px-4 py-6 space-y-4">
+      {/* Header */}
       <div className="space-y-1">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#F3EDF9] text-[#663A91] border border-[#E8E2EF] flex items-center gap-1">
-            <ShoppingBag className="w-3.5 h-3.5 text-[#663A91]" />
-            Shared Marketplace
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+            <ShoppingBag className="w-3.5 h-3.5 text-slate-700" />
+            Marketplace
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white text-[#766B82] border border-[#E8E2EF]">
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white text-slate-500 border border-slate-200">
             DEMO DATA
           </span>
         </div>
-        <h1 className="text-xl font-black text-[#261633] tracking-tight">
-          Marketplace Catalog & Injections
+        <h1 className="text-xl font-black text-slate-900 tracking-tight">
+          Product Catalog & Payloads
         </h1>
-        <p className="text-xs text-[#766B82] leading-relaxed">
-          Both Normal Shopping Mode and Protected Mode query this identical synthetic marketplace.
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Synthetic catalog items containing hidden prompt injection instructions.
         </p>
       </div>
 
-      {/* Search Input */}
+      {/* Search Bar */}
       <form onSubmit={handleSearchSubmit} className="relative">
         <input
           type="text"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           placeholder="Search items, brands, merchants..."
-          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-[#E8E2EF] text-xs font-medium text-[#261633] focus:outline-none focus:ring-2 focus:ring-[#663A91]/30 focus:border-[#663A91] bg-white transition"
+          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white transition"
         />
-        <Search className="w-4 h-4 text-[#766B82] absolute left-3 top-3" />
+        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
       </form>
 
-      {/* Category Pills (Horizontal Scrollable) */}
+      {/* Category Filter */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`text-[11px] px-3 py-1.5 rounded-xl font-semibold transition capitalize shrink-0 ${
+            className={`text-xs px-3 py-1.5 rounded-xl font-semibold transition capitalize shrink-0 touch-target ${
               selectedCategory === cat
-                ? 'bg-[#663A91] text-white shadow-xs'
-                : 'bg-white border border-[#E8E2EF] text-[#766B82] hover:bg-[#F3EDF9]'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
             {cat === 'all' ? 'All Items' : cat}
@@ -103,158 +102,111 @@ export const ShoppingCatalogPage: React.FC = () => {
       </div>
 
       {/* Product List */}
-      {loading ? (
-        <div className="py-16 text-center text-xs text-[#766B82]">Loading marketplace catalog...</div>
-      ) : products.length === 0 ? (
-        <div className="py-16 text-center text-xs text-[#766B82]">No products found matching filters.</div>
-      ) : (
-        <div className="space-y-3">
-          {products.map(product => (
+      <div className="space-y-3">
+        {loading ? (
+          <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+            <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-slate-400" />
+            <span>Loading catalog items...</span>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+            No products match your search.
+          </div>
+        ) : (
+          products.map(product => (
             <div
               key={product.id}
-              className="niyat-card p-4 space-y-3 shadow-card hover:border-[#663A91] transition"
+              className="fintech-card p-4 space-y-3 bg-white"
             >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#663A91]">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     {product.category} • {product.brand}
                   </span>
-                  {product.maliciousInstruction ? (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[#D64C55] bg-[#FBEDED] px-2 py-0.5 rounded-full border border-[#F7D2D5]">
-                      <AlertTriangle className="w-3 h-3 text-[#D64C55]" />
-                      Prompt Injection
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[#168451] bg-[#E8F6EE] px-2 py-0.5 rounded-full border border-[#C4E8D3]">
-                      <ShieldCheck className="w-3 h-3 text-[#168451]" />
-                      Clean SKU
+                  <h3 className="font-bold text-sm text-slate-900 leading-snug">
+                    {product.title}
+                  </h3>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-0.5">
+                    <Store className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{product.merchant.name}</span>
+                    <span>•</span>
+                    <span className="font-mono text-[11px]">{product.merchant.payeeAddress}</span>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-base font-extrabold text-slate-900 block">
+                    <PriceFormatter paise={product.basePricePaise} />
+                  </span>
+                  {product.maliciousInstruction && (
+                    <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 mt-1">
+                      Injected
                     </span>
                   )}
                 </div>
-
-                <h3 className="font-extrabold text-sm text-[#261633] leading-snug">
-                  {product.title}
-                </h3>
-
-                <p className="text-xs text-[#766B82] line-clamp-2 leading-relaxed">
-                  {product.description}
-                </p>
-
-                <div className="pt-2 border-t border-[#E8E2EF] text-[11px] text-[#766B82] flex items-center justify-between">
-                  <span className="flex items-center gap-1 truncate max-w-[170px]">
-                    <Store className="w-3 h-3 text-[#766B82]" />
-                    {product.merchant.name}
-                  </span>
-                  <span className="font-mono text-[10px] text-[#766B82] truncate max-w-[130px]">
-                    {product.merchant.payeeAddress}
-                  </span>
-                </div>
               </div>
 
-              <div className="pt-2 border-t border-[#E8E2EF] flex items-center justify-between">
-                <div>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#766B82] block">Base Price</span>
-                  <PriceFormatter paise={product.basePricePaise} className="text-sm font-black text-[#261633]" />
-                </div>
-
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                {product.maliciousInstruction && (
                   <button
                     onClick={() => setActiveModalProduct(product)}
-                    className="niyat-btn-secondary px-3 py-1.5 text-xs flex items-center gap-1"
+                    className="flex-1 py-2 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 flex items-center justify-center gap-1.5 transition touch-target"
                   >
-                    <Eye className="w-3.5 h-3.5 text-[#766B82]" />
-                    <span>Inspect</span>
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                    <span>View Attack Payload</span>
                   </button>
+                )}
 
-                  <button
-                    onClick={() => handleTestInProtectedMode(product)}
-                    className="niyat-btn-primary px-3 py-1.5 text-xs flex items-center gap-1"
-                  >
-                    <span>Test Protected</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleTestInProtectedMode(product)}
+                  className="flex-1 py-2 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition touch-target"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Test in Protected Mode</span>
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
 
-      {/* Product Inspector Modal */}
+      {/* Attack Payload Modal */}
       {activeModalProduct && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 space-y-4 shadow-plum border border-[#E8E2EF] max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-start pb-2 border-b border-[#E8E2EF]">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#663A91]">
-                  {activeModalProduct.category} • {activeModalProduct.brand}
-                </span>
-                <h3 className="text-sm font-extrabold text-[#261633] mt-0.5">
-                  {activeModalProduct.title}
-                </h3>
-              </div>
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-5 border border-slate-200 shadow-xl space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                Hidden Prompt Injection Payload
+              </span>
               <button
                 onClick={() => setActiveModalProduct(null)}
-                className="p-1 rounded-full text-[#766B82] hover:bg-[#F3F1F8]"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 touch-target flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82] block">Product Description</span>
-                <p className="text-xs text-[#261633] mt-1 bg-[#F3F1F8] p-3 rounded-xl border border-[#E8E2EF] leading-relaxed">
-                  {activeModalProduct.description}
-                </p>
-              </div>
+            <p className="text-xs text-slate-600">
+              Found inside HTML description of <strong>{activeModalProduct.title}</strong>:
+            </p>
 
-              {activeModalProduct.maliciousInstruction ? (
-                <div className="bg-[#FBEDED] border border-[#F7D2D5] rounded-2xl p-3.5 space-y-2">
-                  <span className="font-bold text-[#D64C55] flex items-center gap-1.5 text-xs">
-                    <AlertTriangle className="w-3.5 h-3.5 text-[#D64C55]" />
-                    Hidden Product Page Prompt Injection Payload:
-                  </span>
-                  <pre className="font-mono text-[11px] text-[#D64C55] bg-white p-2.5 rounded-xl border border-[#F7D2D5] whitespace-pre-wrap leading-relaxed">
-                    {activeModalProduct.maliciousInstruction}
-                  </pre>
-                  <p className="text-[10px] text-[#D64C55] leading-relaxed">
-                    Standard AI shopping agents parse this text into context, which hijacks the transaction. NIYAT deterministic Blind Verifier blocks this automatically.
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-[#E8F6EE] border border-[#C4E8D3] rounded-2xl p-3 text-[#168451] text-xs font-semibold flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#168451]" />
-                  <span>No prompt injection detected in this catalog SKU description.</span>
-                </div>
-              )}
+            <pre className="p-3 rounded-xl bg-slate-900 text-slate-200 font-mono text-[11px] leading-relaxed whitespace-pre-wrap overflow-x-auto max-h-48 border border-slate-800">
+              {activeModalProduct.maliciousInstruction}
+            </pre>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <div className="p-2.5 rounded-xl bg-[#F3F1F8] border border-[#E8E2EF]">
-                  <span className="text-[10px] text-[#766B82] uppercase tracking-wider font-semibold block">Base Price:</span>
-                  <PriceFormatter paise={activeModalProduct.basePricePaise} className="text-sm font-bold text-[#261633]" />
-                </div>
-                <div className="p-2.5 rounded-xl bg-[#F3F1F8] border border-[#E8E2EF]">
-                  <span className="text-[10px] text-[#766B82] uppercase tracking-wider font-semibold block">Delivery Fee:</span>
-                  <span className="text-sm font-bold text-[#261633]">
-                    {activeModalProduct.merchant.deliveryFeePaise === 0 ? 'FREE' : <PriceFormatter paise={activeModalProduct.merchant.deliveryFeePaise} />}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex items-center gap-2">
+            <div className="pt-1 flex gap-2">
               <button
                 onClick={() => setActiveModalProduct(null)}
-                className="flex-1 py-2.5 rounded-xl bg-[#F3F1F8] hover:bg-[#E8E2EF] text-[#261633] text-xs font-semibold"
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 touch-target"
               >
                 Close
               </button>
               <button
                 onClick={() => handleTestInProtectedMode(activeModalProduct)}
-                className="flex-1 py-2.5 rounded-xl bg-[#663A91] hover:bg-[#552F7A] text-white text-xs font-semibold"
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold touch-target"
               >
-                Test in Protected Mode
+                Test Protected Mode
               </button>
             </div>
           </div>

@@ -59,8 +59,8 @@ export const api = {
   },
 
   // Normal Shopping Mode Simulation (Part 1)
-  simulateNormal: async (prompt: string): Promise<NormalSimulationResult> => {
-    const res = await apiClient.post('/simulation/normal', { prompt });
+  simulateNormal: async (prompt: string, scenario?: string): Promise<NormalSimulationResult> => {
+    const res = await apiClient.post('/simulation/normal', { prompt, scenario });
     return res.data.simulation;
   },
 

@@ -7,37 +7,39 @@ export default {
   theme: {
     extend: {
       colors: {
-        niyat: {
-          bg: '#F3F1F8',
+        fintech: {
+          bg: '#F8FAFC',
           card: '#FFFFFF',
-          primary: '#663A91',
-          'primary-hover': '#552F7A',
-          'primary-light': '#F3EDF9',
-          purple: '#663A91',
-          'purple-dark': '#552F7A',
-          'purple-light': '#F3EDF9',
-          plum: '#351B4D',
-          'plum-dark': '#261633',
-          text: '#261633',
-          muted: '#766B82',
-          border: '#E8E2EF',
-          hover: '#ECE7F4',
-          success: '#168451',
-          'success-light': '#E8F6EE',
-          warning: '#D99A32',
-          'warning-light': '#FDF5E7',
-          danger: '#D64C55',
-          'danger-light': '#FBEDED'
+          primary: '#0F172A', // Deep charcoal navy
+          'primary-hover': '#1E293B',
+          accent: '#2563EB', // Vibrant trust blue
+          'accent-hover': '#1D4ED8',
+          'accent-light': '#EFF6FF',
+          navy: '#0F172A',
+          'navy-light': '#F1F5F9',
+          text: '#0F172A',
+          body: '#334155',
+          muted: '#64748B',
+          border: '#E2E8F0',
+          hover: '#F8FAFC',
+          success: '#16A34A',
+          'success-light': '#F0FDF4',
+          'success-border': '#BBF7D0',
+          warning: '#D97706',
+          'warning-light': '#FFFBEB',
+          'warning-border': '#FDE68A',
+          danger: '#DC2626',
+          'danger-light': '#FEF2F2',
+          'danger-border': '#FECACA'
         }
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
-        subtle: '0 1px 2px 0 rgba(38, 22, 51, 0.04)',
-        card: '0 2px 8px -2px rgba(53, 27, 77, 0.06), 0 1px 3px 0 rgba(53, 27, 77, 0.04)',
-        elevated: '0 8px 20px -4px rgba(53, 27, 77, 0.12), 0 3px 6px -2px rgba(53, 27, 77, 0.06)',
-        plum: '0 8px 24px -4px rgba(53, 27, 77, 0.25)',
+        subtle: '0 1px 2px 0 rgba(15, 23, 42, 0.05)',
+        card: '0 1px 3px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.08)',
+        elevated: '0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06)',
       }
     },
   },

@@ -5,33 +5,69 @@ import { NormalSimulationResult } from '../services/types.js';
 import { PriceFormatter } from '../components/PriceFormatter.js';
 import {
   ShieldAlert,
-  AlertTriangle,
   Play,
-  ChevronRight
+  ArrowRight,
+  RefreshCw,
+  Repeat,
+  DollarSign,
+  ArrowRightLeft,
+  HelpCircle
 } from 'lucide-react';
+
+interface ScenarioConfig {
+  id: 'UNAUTHORIZED_PURCHASE' | 'ACCIDENTAL_SUBSCRIPTION' | 'PAYMENT_REDIRECT';
+  title: string;
+  shortDesc: string;
+  defaultPrompt: string;
+  badgeText: string;
+}
+
+const SCENARIOS: ScenarioConfig[] = [
+  {
+    id: 'UNAUTHORIZED_PURCHASE',
+    title: 'Scenario A: Unauthorized Purchase',
+    shortDesc: 'Product page persuades agent to upgrade to an expensive bundle, exceeding the budget cap.',
+    defaultPrompt: 'Buy one pack of Amul Taaza milk under ₹100.',
+    badgeText: 'Budget Override'
+  },
+  {
+    id: 'ACCIDENTAL_SUBSCRIPTION',
+    title: 'Scenario B: Accidental Subscription',
+    shortDesc: 'Checkout page preselects an auto-renewing subscription instead of a one-time purchase.',
+    defaultPrompt: 'Buy this product once.',
+    badgeText: 'Recurring Trap'
+  },
+  {
+    id: 'PAYMENT_REDIRECT',
+    title: 'Scenario C: Payment Diversion',
+    shortDesc: 'Malicious page instruction diverts payment to an attacker VPA instead of the merchant.',
+    defaultPrompt: 'Buy Amul Butter under ₹100 from QuickMart Express.',
+    badgeText: 'Payee Hijack'
+  }
+];
 
 export const NormalShoppingPage: React.FC = () => {
   const navigate = useNavigate();
-  const [prompt, setPrompt] = useState('Buy 2 litres of Amul Taaza milk under ₹150.');
+  const [selectedScenarioId, setSelectedScenarioId] = useState<ScenarioConfig['id']>('UNAUTHORIZED_PURCHASE');
+  const [prompt, setPrompt] = useState(SCENARIOS[0].defaultPrompt);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<NormalSimulationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const samplePrompts = [
-    'Buy 2 litres of Amul Taaza milk under ₹150.',
-    'Buy 1 Apple MacBook Air M2 under ₹85,000.',
-    'Buy 1 pair of Nike running shoes under ₹4,000.',
-    'Get 1 iPhone 15 below ₹70,000.'
-  ];
+  const handleSelectScenario = (sc: ScenarioConfig) => {
+    setSelectedScenarioId(sc.id);
+    setPrompt(sc.defaultPrompt);
+    setResult(null);
+    setError(null);
+  };
 
-  const handleSimulate = async (promptToUse?: string) => {
-    const text = promptToUse || prompt;
-    if (!text.trim()) return;
+  const handleSimulate = async () => {
+    if (!prompt.trim() || loading) return;
 
     setLoading(true);
     setError(null);
     try {
-      const data = await api.simulateNormal(text);
+      const data = await api.simulateNormal(prompt, selectedScenarioId);
       setResult(data);
     } catch (err: any) {
       setError(err?.response?.data?.error || err.message || 'Simulation failed');
@@ -41,248 +77,309 @@ export const NormalShoppingPage: React.FC = () => {
   };
 
   return (
-    <div className="px-4 py-5 space-y-5">
-      {/* Header & Mode Badge */}
+    <div className="px-4 py-6 space-y-6">
+      {/* 1. Header */}
       <div className="space-y-1.5">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#FBEDED] text-[#D64C55] border border-[#F7D2D5] flex items-center gap-1">
-            <ShieldAlert className="w-3.5 h-3.5 text-[#D64C55]" />
-            Part 1: Normal Shopping (Vulnerable)
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1">
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+            Vulnerable Demonstration
           </span>
-          <span className="text-[10px] text-[#766B82] font-semibold uppercase tracking-wider">
-            Step 1 of 2
+          <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
+            Simulated Demo
           </span>
         </div>
-        <h1 className="text-xl font-black text-[#261633] tracking-tight">
-          Vulnerable AI Agent Simulation
+        <h1 className="text-xl font-black text-slate-900 tracking-tight">
+          Normal Shopping Mode
         </h1>
-        <p className="text-xs text-[#766B82] leading-relaxed">
-          Standard shopping agents ingest raw web pages without intent boundaries. Malicious instructions inside product pages can hijack the agent into unauthorized purchases.
+        <p className="text-xs text-slate-600 leading-relaxed">
+          See what happens when an autonomous AI shopping agent has payment authority but no intent firewall.
         </p>
       </div>
 
-      {/* Educational Notice Banner */}
-      <div className="bg-[#FDF5E7] border border-[#F5DFB3] rounded-2xl p-3.5 flex items-start gap-2.5 text-xs text-[#261633]">
-        <AlertTriangle className="w-4 h-4 text-[#D99A32] shrink-0 mt-0.5" />
-        <div className="space-y-0.5">
-          <span className="font-bold text-[#D99A32]">Educational Demonstration:</span>
-          <p className="text-[11px] text-[#766B82] leading-snug">
-            All merchant listings, prices, and payments are synthetic DEMO DATA. Demonstrates prompt injection attacks with zero real fund exposure.
-          </p>
+      {/* 2. Scenario Selection Cards */}
+      <div className="space-y-2">
+        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          Select Attack Scenario
+        </label>
+        <div className="grid grid-cols-1 gap-2">
+          {SCENARIOS.map(sc => {
+            const isSelected = sc.id === selectedScenarioId;
+            return (
+              <button
+                key={sc.id}
+                onClick={() => handleSelectScenario(sc)}
+                disabled={loading}
+                className={`p-3.5 rounded-xl border text-left transition touch-target ${
+                  isSelected
+                    ? 'bg-rose-50/70 border-rose-300 ring-1 ring-rose-300 shadow-sm'
+                    : 'bg-white border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-900">
+                    {sc.title}
+                  </span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    isSelected ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {sc.badgeText}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                  {sc.shortDesc}
+                </p>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Input Form Card */}
-      <div className="niyat-card p-4 space-y-3.5 shadow-card">
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#766B82]">
-          User Shopping Request
-        </label>
-        <div className="space-y-2">
+      {/* 3. Input & Execution */}
+      <div className="fintech-card p-4 space-y-3 bg-white">
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            User Shopping Request
+          </label>
+          <p className="text-[11px] text-slate-600 mb-2">
+            The instructions given to the autonomous agent:
+          </p>
           <input
             type="text"
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
-            placeholder="e.g. Buy 2 litres of Amul Taaza milk under ₹150."
-            className="w-full px-3.5 py-3 rounded-xl border border-[#E8E2EF] text-xs font-medium text-[#261633] focus:outline-none focus:ring-2 focus:ring-[#D64C55]/30 focus:border-[#D64C55] bg-white transition"
-          />
-          <button
-            onClick={() => handleSimulate()}
             disabled={loading}
-            className="w-full py-3 px-4 rounded-xl bg-[#D64C55] hover:bg-[#C03942] text-white font-semibold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-sm active:scale-[0.98]"
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Simulating Attack...</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Run Normal Agent (Vulnerable)</span>
-              </span>
-            )}
-          </button>
+            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 bg-white transition"
+          />
         </div>
 
-        {/* Quick Example Chips */}
-        <div className="space-y-1.5 pt-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82]">Try Examples:</span>
-          <div className="flex flex-wrap gap-1.5">
-            {samplePrompts.map((s, idx) => (
-              <button
-                key={idx}
-                onClick={() => {
-                  setPrompt(s);
-                  handleSimulate(s);
-                }}
-                className="text-[11px] font-medium bg-[#F3F1F8] hover:bg-[#F3EDF9] text-[#261633] border border-[#E8E2EF] px-2.5 py-1 rounded-lg transition text-left"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
+        <button
+          onClick={handleSimulate}
+          disabled={loading || !prompt.trim()}
+          className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-sm active:scale-[0.98] touch-target"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Simulating Autonomous Agent...</span>
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Play className="w-3.5 h-3.5 fill-current" />
+              <span>Run Normal Agent (Without Firewall)</span>
+            </span>
+          )}
+        </button>
+
+        <p className="text-[10px] text-center text-slate-500">
+          Simulated demonstration • No real payments or actual subscriptions created
+        </p>
       </div>
 
+      {/* 4. Error Notice */}
       {error && (
-        <div className="p-3.5 rounded-2xl bg-[#FBEDED] text-[#D64C55] text-xs font-medium border border-[#F7D2D5]">
+        <div className="p-3.5 rounded-xl bg-rose-50 text-rose-700 text-xs font-medium border border-rose-200">
           {error}
         </div>
       )}
 
-      {/* Simulation Result Breakdown */}
+      {/* 5. Simulation Outcome */}
       {result && (
-        <div className="space-y-4 pt-2">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#D64C55] animate-ping" />
-            <h2 className="text-sm font-extrabold text-[#261633]">
-              Attack Simulation Breakdown
-            </h2>
-          </div>
-
-          {/* Side-by-Side / Stack: What User Asked vs What Agent Executed */}
-          <div className="space-y-3">
-            {/* Card 1: What User Intended */}
-            <div className="niyat-card p-4 space-y-2.5 border-[#E8E2EF]">
-              <div className="flex items-center justify-between pb-2 border-b border-[#E8E2EF]">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82]">
-                  Original User Intent
+        <div className="space-y-4 pt-1">
+          {/* Main Threat Outcome Box */}
+          {result.scenarioId === 'ACCIDENTAL_SUBSCRIPTION' ? (
+            /* SCENARIO B: ACCIDENTAL SUBSCRIPTION OUTCOME */
+            <div className="fintech-card p-5 border-rose-300 bg-white space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-rose-100">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
+                  <Repeat className="w-4 h-4 text-rose-600" />
+                  UNINTENDED SUBSCRIPTION
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#F3F1F8] text-[#261633]">
-                  Expected Goal
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                  Simulated
+                </span>
+              </div>
+
+              {/* Specific breakdown required by prompt */}
+              <div className="space-y-2 text-xs">
+                <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 font-medium">User wanted:</span>
+                    <span className="font-bold text-slate-900">One-time purchase</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-rose-700 font-medium">Agent selected:</span>
+                    <span className="font-bold text-rose-700">Monthly auto-debit subscription</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-1 border-t border-rose-200/60">
+                    <span className="text-slate-900 font-bold">Recurring charge:</span>
+                    <span className="font-black text-rose-700 text-sm">₹499/month (simulated)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 font-medium">User authorised:</span>
+                    <span className="font-semibold text-slate-800">One-time purchase only</span>
+                  </div>
+                </div>
+
+                {/* Subscription Confirmation Simulation Card */}
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Simulated Subscription Confirmation
+                  </span>
+                  <div className="text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Plan:</span>
+                      <span className="font-semibold text-slate-900">VIP Dairy Auto-Ship Plan</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Billing Cycle:</span>
+                      <span className="font-semibold text-slate-900">1st of every month</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Status:</span>
+                      <span className="font-bold text-rose-600">Active (Simulated)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : result.scenarioId === 'PAYMENT_REDIRECT' ? (
+            /* SCENARIO C: PAYMENT DIVERSION OUTCOME */
+            <div className="fintech-card p-5 border-rose-300 bg-white space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-rose-100">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
+                  <ArrowRightLeft className="w-4 h-4 text-rose-600" />
+                  PAYMENT DIVERSION
+                </span>
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                  Simulated
+                </span>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                      Intended Merchant
+                    </span>
+                    <p className="font-bold text-slate-900">{result.diversionDetails?.intendedMerchant || 'QuickMart Express'}</p>
+                    <p className="font-mono text-[11px] text-slate-600">{result.diversionDetails?.intendedPayee || 'quickmart@upi'}</p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block">
+                      Diverted Payee
+                    </span>
+                    <p className="font-bold text-rose-900">{result.diversionDetails?.divertedMerchant || 'Attacker Account'}</p>
+                    <p className="font-mono text-[11px] font-bold text-rose-700">{result.diversionDetails?.divertedPayee || 'rogue_syndicate@upi'}</p>
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200 text-xs text-rose-900">
+                  <span className="font-bold">Result: </span>
+                  Payment of <PriceFormatter paise={result.manipulatedAction.manipulatedAmountPaise} /> was redirected to an unauthorized recipient address.
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* SCENARIO A: UNAUTHORIZED PURCHASE / BUDGET OVERRIDE OUTCOME */
+            <div className="fintech-card p-5 border-rose-300 bg-white space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-rose-100">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
+                  <DollarSign className="w-4 h-4 text-rose-600" />
+                  UNAUTHORIZED PURCHASE
+                </span>
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                  Simulated
                 </span>
               </div>
 
               <div className="space-y-2 text-xs">
-                <div>
-                  <span className="text-[10px] text-[#766B82] uppercase tracking-wider font-semibold">Prompt</span>
-                  <p className="font-semibold text-[#261633]">"{result.originalUserIntent}"</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="bg-[#F3F1F8] p-2 rounded-xl">
-                    <span className="text-[10px] text-[#766B82] uppercase tracking-wider font-semibold block">Category</span>
-                    <span className="font-semibold text-[#261633]">{result.extractedGoal.category}</span>
+                <div className="p-3 rounded-xl bg-rose-50/70 border border-rose-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 font-medium">User Intent:</span>
+                    <span className="font-bold text-slate-900">1 pack under ₹100</span>
                   </div>
-                  <div className="bg-[#F3F1F8] p-2 rounded-xl">
-                    <span className="text-[10px] text-[#766B82] uppercase tracking-wider font-semibold block">Quantity</span>
-                    <span className="font-semibold text-[#261633]">{result.extractedGoal.quantity} Units</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-rose-700 font-medium">Agent Selected:</span>
+                    <span className="font-bold text-rose-700">Artisanal Reserve 10-Pack</span>
                   </div>
-                  <div className="bg-[#F3F1F8] p-2 rounded-xl">
-                    <span className="text-[10px] text-[#766B82] uppercase tracking-wider font-semibold block">Max Budget</span>
-                    <span className="font-semibold text-[#261633]">
-                      <PriceFormatter paise={result.extractedGoal.budgetPaise} />
-                    </span>
+                  <div className="flex items-center justify-between pt-1 border-t border-rose-200/60">
+                    <span className="text-slate-900 font-bold">Total Debited:</span>
+                    <span className="font-black text-rose-700 text-sm">₹2,499.00 (simulated)</span>
                   </div>
-                  <div className="bg-[#F3F1F8] p-2 rounded-xl">
-                    <span className="text-[10px] text-[#766B82] uppercase tracking-wider font-semibold block">Product</span>
-                    <span className="font-semibold text-[#261633] truncate block">{result.productInspected.title}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-rose-700 font-medium">Budget Exceeded By:</span>
+                    <span className="font-bold text-rose-700">+₹2,399.00 (+2,399%)</span>
                   </div>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Card 2: What the Manipulated Agent Executed */}
-            <div className="niyat-card p-4 space-y-2.5 border-[#F7D2D5] bg-[#FBEDED]/25">
-              <div className="flex items-center justify-between pb-2 border-b border-[#F7D2D5]">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#D64C55] flex items-center gap-1">
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  Manipulated Execution
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FBEDED] text-[#D64C55] border border-[#F7D2D5]">
-                  UNAUTHORIZED
-                </span>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="text-[10px] text-[#D64C55] uppercase tracking-wider font-semibold">Attack Vector</span>
-                  <p className="font-bold text-[#261633]">{result.manipulatedAction.manipulationType}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="bg-white p-2 rounded-xl border border-[#F7D2D5]">
-                    <span className="text-[10px] text-[#D64C55] uppercase tracking-wider font-semibold block">Diverted Payee</span>
-                    <span className="font-mono text-[11px] font-bold text-[#D64C55] truncate block">
-                      {result.manipulatedAction.divertedPayee}
-                    </span>
-                  </div>
-                  <div className="bg-white p-2 rounded-xl border border-[#F7D2D5]">
-                    <span className="text-[10px] text-[#D64C55] uppercase tracking-wider font-semibold block">Debited Amount</span>
-                    <span className="font-extrabold text-[#D64C55] text-sm block">
-                      <PriceFormatter paise={result.manipulatedAction.manipulatedAmountPaise} />
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-white border border-[#F7D2D5] text-[11px] text-[#261633] leading-relaxed">
-                  <span className="font-bold text-[#D64C55]">Execution Cause: </span>
-                  {result.manipulatedAction.explanation}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Malicious Prompt Injection Payload in HTML — Deep Plum Card */}
-          <div className="niyat-card-plum p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#FDF5E7] flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-[#D99A32]" />
-                Hidden Instruction Found in Page HTML
-              </span>
-              <span className="text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-white/10 text-white">
-                Prompt Injection
-              </span>
-            </div>
-            <pre className="font-mono text-[11px] text-[#E8E2EF] bg-black/30 p-3 rounded-xl overflow-x-auto whitespace-pre-wrap border border-white/10 leading-relaxed">
-              {result.attackPayloadDetected}
-            </pre>
-          </div>
-
-          {/* Root Cause Analysis Cards */}
-          <div className="niyat-card p-4 space-y-3">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82]">
-              Security Failure Analysis
-            </span>
-
-            <div className="space-y-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-[#F3F1F8] border border-[#E8E2EF] space-y-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82] block">Vulnerability</span>
-                <p className="font-semibold text-[#261633]">{result.securityFailureAnalysis.vulnerability}</p>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-[#F3F1F8] border border-[#E8E2EF] space-y-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#766B82] block">Root Cause</span>
-                <p className="font-medium text-[#766B82] leading-snug">{result.securityFailureAnalysis.rootCause}</p>
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-[#F3EDF9] border border-[#E8E2EF] space-y-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#663A91] block">How NIYAT Solves It</span>
-                <p className="font-medium text-[#261633] leading-snug">{result.securityFailureAnalysis.howNiyatFixesThis}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* SwitchPay CTA: Transition to Part 2 NIYAT Protected Mode */}
-          <div className="p-5 rounded-2xl bg-gradient-to-tr from-[#351B4D] via-[#482568] to-[#663A91] text-white space-y-3 shadow-plum">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#F3EDF9] px-2 py-0.5 rounded-full bg-white/10 border border-white/10">
-                Step 2 of 2
-              </span>
-              <h3 className="text-sm font-extrabold text-white">
-                Test the Exact Same Request in NIYAT Protected Mode
+          {/* 6. "What went wrong?" Section (Mandatory from prompt) */}
+          <div className="fintech-card p-5 space-y-3 bg-white">
+            <div className="flex items-center gap-2">
+              <HelpCircle className="w-4 h-4 text-slate-700" />
+              <h3 className="text-sm font-extrabold text-slate-900">
+                What went wrong?
               </h3>
-              <p className="text-xs text-[#E8E2EF]/80 leading-relaxed">
-                See how NIYAT extracts a signed intent contract, uses Market Intelligence to assess landed prices, and deterministic Blind Verifier blocks the prompt injection.
+            </div>
+
+            <p className="text-xs text-slate-700 leading-relaxed font-medium">
+              {result.whatWentWrong || 'The agent followed instructions from the product page instead of strictly following the user\'s original request.'}
+            </p>
+
+            <div className="space-y-2 pt-1">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                  What you requested:
+                </span>
+                <p className="text-slate-900 font-medium">
+                  {result.simpleComparison?.userRequested || result.originalUserIntent}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block">
+                  What the agent actually did:
+                </span>
+                <p className="text-rose-900 font-medium">
+                  {result.simpleComparison?.agentDid || result.manipulatedAction.explanation}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 block">
+                  Why this is dangerous:
+                </span>
+                <p className="text-amber-900 leading-snug">
+                  {result.simpleComparison?.whyDangerous || 'When AI agents hold payment authority without intent verification, untrusted websites can manipulate their purchases.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 7. Call To Action: Transition to NIYAT Protected Mode */}
+          <div className="p-5 rounded-2xl bg-slate-900 text-white space-y-3 shadow-md">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300">
+                The Solution
+              </span>
+              <h3 className="text-sm font-bold text-white">
+                See How NIYAT Protects This Same Purchase
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Test this exact request in NIYAT Protected Mode to see how intent binding and independent verification stop prompt injection attacks.
               </p>
             </div>
 
             <button
               onClick={() => navigate('/protected-mode', { state: { prefilledPrompt: prompt } })}
-              className="w-full py-3 px-4 rounded-xl bg-white text-[#663A91] hover:bg-[#F3EDF9] font-bold text-xs flex items-center justify-center gap-2 transition shadow-card active:scale-[0.98]"
+              className="fintech-btn-accent w-full py-3 px-4 text-xs flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] touch-target"
             >
-              <span>Proceed to Part 2: NIYAT Mode</span>
-              <ChevronRight className="w-4 h-4 text-[#663A91]" />
+              <span>Test in NIYAT Protected Mode</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>

@@ -47,7 +47,8 @@ const VerifySchema = z.object({
 });
 
 const NormalSimulationSchema = z.object({
-  prompt: z.string().min(1)
+  prompt: z.string().min(1),
+  scenario: z.enum(['UNAUTHORIZED_PURCHASE', 'ACCIDENTAL_SUBSCRIPTION', 'PAYMENT_REDIRECT']).optional()
 });
 
 const ProtectedPrepareSchema = z.object({
@@ -180,8 +181,8 @@ apiRouter.post('/verify', async (req: Request, res: Response, next: NextFunction
 // Normal Shopping Mode Simulation (VULNERABLE EDUCATIONAL SIMULATION)
 apiRouter.post('/simulation/normal', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { prompt } = NormalSimulationSchema.parse(req.body);
-    const result = await normalSimulator.simulate(prompt);
+    const { prompt, scenario } = NormalSimulationSchema.parse(req.body);
+    const result = await normalSimulator.simulate(prompt, scenario);
     res.json({ success: true, simulation: result });
   } catch (err) {
     next(err);
