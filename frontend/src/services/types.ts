@@ -295,3 +295,41 @@ export interface AIProviderStatus {
   lastSuccessTime?: string;
   lastError?: string;
 }
+
+export interface WalletRecord {
+  id: string;
+  ownerId: string;
+  ownerType: 'USER' | 'MERCHANT';
+  ownerName: string;
+  upiId: string;
+  balancePaise: number;
+  currency: string;
+  isDemoWallet: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WalletLedgerRecord {
+  id: string;
+  transactionRef: string;
+  type: 'TOPUP' | 'P2P_TRANSFER' | 'PROTECTED_PURCHASE';
+  status: 'SUCCESS' | 'FAILED' | 'BLOCKED';
+  amountPaise: number;
+  feePaise: number;
+  note?: string | null;
+  sourceWalletId?: string | null;
+  targetWalletId?: string | null;
+  sourceUpiId: string;
+  targetUpiId: string;
+  contractId?: string | null;
+  assessmentId?: string | null;
+  verifierDecision?: string | null;
+  isDemoData: boolean;
+  createdAt: string;
+}
+
+export interface WalletSummary {
+  wallet: WalletRecord;
+  balanceRupees: number;
+  recentLedgers: WalletLedgerRecord[];
+}

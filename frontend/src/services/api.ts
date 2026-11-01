@@ -7,7 +7,8 @@ import {
   SecurityScenario,
   SecurityRunResult,
   TransactionRecord,
-  AIProviderStatus
+  AIProviderStatus,
+  WalletSummary
 } from './types.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://niyat-payments-api.onrender.com';
@@ -105,5 +106,25 @@ export const api = {
   getAIStatus: async (): Promise<AIProviderStatus[]> => {
     const res = await apiClient.get('/ai/status');
     return res.data.providers;
+  },
+
+  // Pocket UPI Simulated Wallet
+  getWallet: async (ownerId = 'user_default'): Promise<WalletSummary> => {
+    const res = await apiClient.get('/wallet', { params: { ownerId } });
+    return res.data;
+  },
+
+  topUpWallet: async (amountPaise: number, ownerId = 'user_default'): Promise<WalletSummary> => {
+    const res = await apiClient.post('/wallet/topup', { amountPaise, ownerId });
+    return res.data;
+  },
+
+  transferP2P: async (payload: {
+    recipientUpiId: string;
+    amountPaise: number;
+    note?: string;
+  }): Promise<{ success: boolean; transactionRef: string; message: string; balanceRupees: number }> => {
+    const res = await apiClient.post('/wallet/transfer', payload);
+    return res.data;
   }
 };

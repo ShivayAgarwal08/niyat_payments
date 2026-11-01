@@ -10,6 +10,7 @@ import { ShoppingCatalogPage } from './pages/ShoppingCatalogPage.js';
 import { SecurityLabPage } from './pages/SecurityLabPage.js';
 import { TransactionHistoryPage } from './pages/TransactionHistoryPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { PocketPayPage } from './pages/PocketPayPage.js';
 
 const AppLayout: React.FC = () => {
   const location = useLocation();
@@ -26,6 +27,7 @@ const AppLayout: React.FC = () => {
             <Route path="/home" element={<HomePage />} />
             <Route path="/normal-mode" element={<NormalShoppingPage />} />
             <Route path="/protected-mode" element={<ProtectedShoppingPage />} />
+            <Route path="/pocket-pay" element={<PocketPayPage />} />
             <Route path="/catalog" element={<ShoppingCatalogPage />} />
             <Route path="/security-lab" element={<SecurityLabPage />} />
             <Route path="/transactions" element={<TransactionHistoryPage />} />

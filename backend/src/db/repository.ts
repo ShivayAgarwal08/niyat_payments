@@ -3,7 +3,10 @@ import {
   ProductItem,
   MarketIntelligenceReport,
   SignedIntentContract,
-  MarketAssessmentRecord
+  MarketAssessmentRecord,
+  WalletRecord,
+  WalletLedgerRecord,
+  WalletSummary
 } from '../types/index.js';
 import {
   MarketIntelligenceEngine,
@@ -76,6 +79,8 @@ export class MarketplaceRepository {
   private usedNonces: Set<string> = new Set();
   private transactions: SimulatedTxRecord[] = [];
   private securityRuns: SecurityScenarioRecord[] = [];
+  private wallets: Map<string, WalletRecord> = new Map();
+  private ledgers: WalletLedgerRecord[] = [];
   private marketEngine = new MarketIntelligenceEngine();
 
   constructor(options?: { forceMemoryOnly?: boolean; prismaClient?: PrismaClient | null }) {
@@ -180,6 +185,61 @@ export class MarketplaceRepository {
       this.products.set(p.id, {
         ...p,
         marketPrices: history
+      });
+    }
+
+    // Seed default in-memory demo wallets
+    this.wallets.set('user_default', {
+      id: 'wallet_user_default',
+      ownerId: 'user_default',
+      ownerType: 'USER',
+      ownerName: 'Primary User',
+      upiId: 'user@niyat',
+      balancePaise: 500000,
+      currency: 'INR',
+      isDemoWallet: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    this.wallets.set('rahul@niyat', {
+      id: 'wallet_user_rahul',
+      ownerId: 'user_rahul',
+      ownerType: 'USER',
+      ownerName: 'Rahul Sharma',
+      upiId: 'rahul@niyat',
+      balancePaise: 150000,
+      currency: 'INR',
+      isDemoWallet: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    this.wallets.set('priya@niyat', {
+      id: 'wallet_user_priya',
+      ownerId: 'user_priya',
+      ownerType: 'USER',
+      ownerName: 'Priya Patel',
+      upiId: 'priya@niyat',
+      balancePaise: 200000,
+      currency: 'INR',
+      isDemoWallet: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    for (const m of SEED_MERCHANTS) {
+      this.wallets.set(m.payeeAddress, {
+        id: `wallet_${m.id}`,
+        ownerId: m.id,
+        ownerType: 'MERCHANT',
+        ownerName: m.name,
+        upiId: m.payeeAddress,
+        balancePaise: 2500000,
+        currency: 'INR',
+        isDemoWallet: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
     }
   }
@@ -692,6 +752,51 @@ export class MarketplaceRepository {
             }
           });
 
+          // 5. Debit user wallet atomically & credit merchant wallet
+          const userWallet = await tx.wallet.findUnique({
+            where: { ownerId: 'user_default' }
+          });
+          if (userWallet) {
+            if (userWallet.balancePaise < params.tx.totalAmountPaise) {
+              throw new Error('INSUFFICIENT_WALLET_BALANCE');
+            }
+            await tx.wallet.update({
+              where: { id: userWallet.id },
+              data: { balancePaise: { decrement: params.tx.totalAmountPaise } }
+            });
+
+            // Credit merchant wallet if found
+            const merchantWallet = await tx.wallet.findFirst({
+              where: { upiId: params.tx.payeeAddress }
+            });
+            if (merchantWallet) {
+              await tx.wallet.update({
+                where: { id: merchantWallet.id },
+                data: { balancePaise: { increment: params.tx.totalAmountPaise } }
+              });
+            }
+
+            // Record wallet ledger entry
+            await tx.walletLedgerEntry.create({
+              data: {
+                transactionRef: `ref_shop_${dbTx.id}`,
+                type: 'PROTECTED_PURCHASE',
+                status: 'SUCCESS',
+                amountPaise: params.tx.totalAmountPaise,
+                feePaise: params.tx.deliveryFeePaise + params.tx.handlingFeePaise,
+                note: `NIYAT Verified: ${params.tx.productTitle} (${params.tx.quantity}x)`,
+                sourceWalletId: userWallet.id,
+                targetWalletId: merchantWallet?.id || null,
+                sourceUpiId: userWallet.upiId,
+                targetUpiId: params.tx.payeeAddress,
+                contractId: params.contractId,
+                assessmentId: params.assessmentId,
+                verifierDecision: 'ALLOW',
+                isDemoData: true
+              }
+            });
+          }
+
           const txRecord: SimulatedTxRecord = {
             ...params.tx,
             id: dbTx.id,
@@ -737,6 +842,38 @@ export class MarketplaceRepository {
     const memAssessment = this.assessments.get(params.assessmentId);
     if (!memAssessment || memAssessment.isConsumed) {
       return { success: false, error: 'ASSESSMENT_ALREADY_CONSUMED' };
+    }
+
+    const memUserWallet = this.wallets.get('user_default');
+    if (memUserWallet) {
+      if (memUserWallet.balancePaise < params.tx.totalAmountPaise) {
+        return { success: false, error: 'INSUFFICIENT_WALLET_BALANCE' };
+      }
+      memUserWallet.balancePaise -= params.tx.totalAmountPaise;
+
+      const memMerchantWallet = this.wallets.get(params.tx.payeeAddress);
+      if (memMerchantWallet) {
+        memMerchantWallet.balancePaise += params.tx.totalAmountPaise;
+      }
+
+      this.ledgers.unshift({
+        id: `ledger_${Date.now()}`,
+        transactionRef: `ref_shop_mem_${Date.now()}`,
+        type: 'PROTECTED_PURCHASE',
+        status: 'SUCCESS',
+        amountPaise: params.tx.totalAmountPaise,
+        feePaise: params.tx.deliveryFeePaise + params.tx.handlingFeePaise,
+        note: `NIYAT Verified: ${params.tx.productTitle}`,
+        sourceWalletId: memUserWallet.id,
+        targetWalletId: memMerchantWallet?.id || null,
+        sourceUpiId: memUserWallet.upiId,
+        targetUpiId: params.tx.payeeAddress,
+        contractId: params.contractId,
+        assessmentId: params.assessmentId,
+        verifierDecision: 'ALLOW',
+        isDemoData: true,
+        createdAt: new Date().toISOString()
+      });
     }
 
     memAssessment.isConsumed = true;
@@ -1043,6 +1180,348 @@ export class MarketplaceRepository {
     }
 
     return this.securityRuns.slice(0, limit);
+  }
+
+  // --- Pocket UPI Wallet Operations ---
+  public async getWallet(ownerId = 'user_default'): Promise<WalletSummary> {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (this.usePrisma && this.prisma) {
+      try {
+        let wallet = await this.prisma.wallet.findUnique({
+          where: { ownerId }
+        });
+
+        if (!wallet && ownerId === 'user_default') {
+          wallet = await this.prisma.wallet.create({
+            data: {
+              ownerId: 'user_default',
+              ownerType: 'USER',
+              ownerName: 'Primary User',
+              upiId: 'user@niyat',
+              balancePaise: 500000,
+              currency: 'INR',
+              isDemoWallet: true
+            }
+          });
+        }
+
+        if (wallet) {
+          const ledgers = await this.prisma.walletLedgerEntry.findMany({
+            where: {
+              OR: [
+                { sourceWalletId: wallet.id },
+                { targetWalletId: wallet.id },
+                { sourceUpiId: wallet.upiId },
+                { targetUpiId: wallet.upiId }
+              ]
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 25
+          });
+
+          return {
+            wallet: {
+              id: wallet.id,
+              ownerId: wallet.ownerId,
+              ownerType: wallet.ownerType as any,
+              ownerName: wallet.ownerName,
+              upiId: wallet.upiId,
+              balancePaise: wallet.balancePaise,
+              currency: wallet.currency,
+              isDemoWallet: wallet.isDemoWallet,
+              createdAt: wallet.createdAt.toISOString(),
+              updatedAt: wallet.updatedAt.toISOString()
+            },
+            balanceRupees: wallet.balancePaise / 100,
+            recentLedgers: ledgers.map(l => ({
+              id: l.id,
+              transactionRef: l.transactionRef,
+              type: l.type as any,
+              status: l.status as any,
+              amountPaise: l.amountPaise,
+              feePaise: l.feePaise,
+              note: l.note,
+              sourceWalletId: l.sourceWalletId,
+              targetWalletId: l.targetWalletId,
+              sourceUpiId: l.sourceUpiId,
+              targetUpiId: l.targetUpiId,
+              contractId: l.contractId,
+              assessmentId: l.assessmentId,
+              verifierDecision: l.verifierDecision,
+              isDemoData: l.isDemoData,
+              createdAt: l.createdAt.toISOString()
+            }))
+          };
+        }
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to query wallet in production: ${err.message || 'Database error'}`);
+        }
+        console.warn('Prisma getWallet failed, falling back to memory:', err);
+      }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory wallet store is forbidden in production.');
+    }
+
+    const memWallet = this.wallets.get(ownerId) || this.wallets.get('user_default')!;
+    const memLedgers = this.ledgers.filter(
+      l => l.sourceUpiId === memWallet.upiId || l.targetUpiId === memWallet.upiId
+    );
+
+    return {
+      wallet: memWallet,
+      balanceRupees: memWallet.balancePaise / 100,
+      recentLedgers: memLedgers.slice(0, 25)
+    };
+  }
+
+  public async topUpWallet(amountPaise: number, ownerId = 'user_default'): Promise<WalletSummary> {
+    if (amountPaise <= 0 || !Number.isInteger(amountPaise)) {
+      throw new Error('Top-up amount must be a positive integer in paise');
+    }
+
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (this.usePrisma && this.prisma) {
+      try {
+        const txRef = `topup_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        await this.prisma.$transaction(async (tx) => {
+          let wallet = await tx.wallet.findUnique({ where: { ownerId } });
+          if (!wallet && ownerId === 'user_default') {
+            wallet = await tx.wallet.create({
+              data: {
+                ownerId: 'user_default',
+                ownerType: 'USER',
+                ownerName: 'Primary User',
+                upiId: 'user@niyat',
+                balancePaise: 500000,
+                currency: 'INR',
+                isDemoWallet: true
+              }
+            });
+          }
+
+          if (!wallet) throw new Error('Wallet not found');
+
+          await tx.wallet.update({
+            where: { id: wallet.id },
+            data: { balancePaise: { increment: amountPaise } }
+          });
+
+          await tx.walletLedgerEntry.create({
+            data: {
+              transactionRef: txRef,
+              type: 'TOPUP',
+              status: 'SUCCESS',
+              amountPaise,
+              feePaise: 0,
+              note: `Demo Money Added: ₹${(amountPaise / 100).toFixed(2)}`,
+              sourceWalletId: null,
+              targetWalletId: wallet.id,
+              sourceUpiId: 'bank_simulator@rbi',
+              targetUpiId: wallet.upiId,
+              isDemoData: true
+            }
+          });
+        });
+
+        return this.getWallet(ownerId);
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to top up wallet in production: ${err.message || 'Database error'}`);
+        }
+        console.warn('Prisma topUpWallet failed, falling back to memory:', err);
+      }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory top-up is forbidden in production.');
+    }
+
+    const memWallet = this.wallets.get(ownerId) || this.wallets.get('user_default')!;
+    memWallet.balancePaise += amountPaise;
+    memWallet.updatedAt = new Date().toISOString();
+
+    this.ledgers.unshift({
+      id: `topup_${Date.now()}`,
+      transactionRef: `topup_ref_${Date.now()}`,
+      type: 'TOPUP',
+      status: 'SUCCESS',
+      amountPaise,
+      feePaise: 0,
+      note: `Demo Money Added: ₹${(amountPaise / 100).toFixed(2)}`,
+      sourceWalletId: null,
+      targetWalletId: memWallet.id,
+      sourceUpiId: 'bank_simulator@rbi',
+      targetUpiId: memWallet.upiId,
+      isDemoData: true,
+      createdAt: new Date().toISOString()
+    });
+
+    return this.getWallet(ownerId);
+  }
+
+  public async transferP2P(params: {
+    senderOwnerId?: string;
+    recipientUpiId: string;
+    amountPaise: number;
+    note?: string;
+  }): Promise<{ success: boolean; transactionRef: string; message: string; balanceRupees: number }> {
+    const { senderOwnerId = 'user_default', recipientUpiId, amountPaise, note } = params;
+
+    if (amountPaise <= 0 || !Number.isInteger(amountPaise)) {
+      throw new Error('Transfer amount must be a positive integer in paise');
+    }
+
+    const cleanRecipientUpi = recipientUpiId.trim().toLowerCase();
+    const isProd = process.env.NODE_ENV === 'production';
+    const txRef = `p2p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+    if (this.usePrisma && this.prisma) {
+      try {
+        const result = await this.prisma.$transaction(async (tx) => {
+          const senderWallet = await tx.wallet.findUnique({
+            where: { ownerId: senderOwnerId }
+          });
+
+          if (!senderWallet) {
+            throw new Error('Sender wallet not found');
+          }
+
+          if (senderWallet.balancePaise < amountPaise) {
+            throw new Error(`Insufficient wallet balance. Available: ₹${(senderWallet.balancePaise / 100).toFixed(2)}, required: ₹${(amountPaise / 100).toFixed(2)}`);
+          }
+
+          if (senderWallet.upiId.toLowerCase() === cleanRecipientUpi) {
+            throw new Error('Cannot transfer money to yourself');
+          }
+
+          // Check if recipient wallet exists in system, or auto-create demo peer wallet
+          let recipientWallet = await tx.wallet.findFirst({
+            where: { upiId: cleanRecipientUpi }
+          });
+
+          if (!recipientWallet) {
+            const peerName = cleanRecipientUpi.split('@')[0] || 'Peer';
+            recipientWallet = await tx.wallet.create({
+              data: {
+                ownerId: `peer_${cleanRecipientUpi.replace(/[^a-zA-Z0-9]/g, '_')}`,
+                ownerType: cleanRecipientUpi.includes('upi') || cleanRecipientUpi.includes('bank') ? 'MERCHANT' : 'USER',
+                ownerName: peerName.charAt(0).toUpperCase() + peerName.slice(1),
+                upiId: cleanRecipientUpi,
+                balancePaise: 0,
+                currency: 'INR',
+                isDemoWallet: true
+              }
+            });
+          }
+
+          // Debit sender
+          const updatedSender = await tx.wallet.update({
+            where: { id: senderWallet.id },
+            data: { balancePaise: { decrement: amountPaise } }
+          });
+
+          // Credit recipient
+          await tx.wallet.update({
+            where: { id: recipientWallet.id },
+            data: { balancePaise: { increment: amountPaise } }
+          });
+
+          // Create ledger entry
+          await tx.walletLedgerEntry.create({
+            data: {
+              transactionRef: txRef,
+              type: 'P2P_TRANSFER',
+              status: 'SUCCESS',
+              amountPaise,
+              feePaise: 0,
+              note: note || `P2P Transfer to ${cleanRecipientUpi}`,
+              sourceWalletId: senderWallet.id,
+              targetWalletId: recipientWallet.id,
+              sourceUpiId: senderWallet.upiId,
+              targetUpiId: cleanRecipientUpi,
+              isDemoData: true
+            }
+          });
+
+          return {
+            balanceRupees: updatedSender.balancePaise / 100
+          };
+        });
+
+        return {
+          success: true,
+          transactionRef: txRef,
+          message: `Successfully sent ₹${(amountPaise / 100).toFixed(2)} to ${cleanRecipientUpi}`,
+          balanceRupees: result.balanceRupees
+        };
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`P2P transfer failed in production: ${err.message || 'Database error'}`);
+        }
+        console.warn('Prisma transferP2P failed, falling back to memory:', err);
+      }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory P2P transfer is forbidden in production.');
+    }
+
+    const memSender = this.wallets.get(senderOwnerId) || this.wallets.get('user_default')!;
+    if (memSender.balancePaise < amountPaise) {
+      throw new Error(`Insufficient wallet balance. Available: ₹${(memSender.balancePaise / 100).toFixed(2)}`);
+    }
+
+    if (memSender.upiId.toLowerCase() === cleanRecipientUpi) {
+      throw new Error('Cannot transfer money to yourself');
+    }
+
+    let memRecipient = this.wallets.get(cleanRecipientUpi);
+    if (!memRecipient) {
+      memRecipient = {
+        id: `wallet_${Date.now()}`,
+        ownerId: `peer_${Date.now()}`,
+        ownerType: 'USER',
+        ownerName: cleanRecipientUpi.split('@')[0],
+        upiId: cleanRecipientUpi,
+        balancePaise: 0,
+        currency: 'INR',
+        isDemoWallet: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.wallets.set(cleanRecipientUpi, memRecipient);
+    }
+
+    memSender.balancePaise -= amountPaise;
+    memRecipient.balancePaise += amountPaise;
+
+    this.ledgers.unshift({
+      id: `p2p_${Date.now()}`,
+      transactionRef: txRef,
+      type: 'P2P_TRANSFER',
+      status: 'SUCCESS',
+      amountPaise,
+      feePaise: 0,
+      note: note || `P2P Transfer to ${cleanRecipientUpi}`,
+      sourceWalletId: memSender.id,
+      targetWalletId: memRecipient.id,
+      sourceUpiId: memSender.upiId,
+      targetUpiId: cleanRecipientUpi,
+      isDemoData: true,
+      createdAt: new Date().toISOString()
+    });
+
+    return {
+      success: true,
+      transactionRef: txRef,
+      message: `Successfully sent ₹${(amountPaise / 100).toFixed(2)} to ${cleanRecipientUpi}`,
+      balanceRupees: memSender.balancePaise / 100
+    };
   }
 }
 

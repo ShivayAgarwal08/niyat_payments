@@ -182,3 +182,47 @@ model SecurityTestRun {
   @@index([scenarioId])
   @@index([executedAt])
 }
+
+model Wallet {
+  id               String               @id @default(uuid())
+  ownerId          String               @unique
+  ownerType        String               // "USER" or "MERCHANT"
+  ownerName        String
+  upiId            String               @unique // e.g. "user@niyat", "quickmart@upi"
+  balancePaise     Int                  @default(500000) // Default ₹5,000.00 demo balance
+  currency         String               @default("INR")
+  isDemoWallet     Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  sentLedgers      WalletLedgerEntry[]  @relation("DebitedWallet")
+  receivedLedgers  WalletLedgerEntry[]  @relation("CreditedWallet")
+
+  @@index([upiId])
+  @@index([ownerType])
+}
+
+model WalletLedgerEntry {
+  id                   String           @id @default(uuid())
+  transactionRef       String           @unique
+  type                 String           // "TOPUP", "P2P_TRANSFER", "PROTECTED_PURCHASE"
+  status               String           // "SUCCESS", "FAILED", "BLOCKED"
+  amountPaise          Int
+  feePaise             Int              @default(0)
+  note                 String?
+  sourceWalletId       String?
+  sourceWallet         Wallet?          @relation("DebitedWallet", fields: [sourceWalletId], references: [id])
+  targetWalletId       String?
+  targetWallet         Wallet?          @relation("CreditedWallet", fields: [targetWalletId], references: [id])
+  sourceUpiId          String
+  targetUpiId          String
+  contractId           String?
+  assessmentId         String?
+  verifierDecision     String?          // "ALLOW", "ASK", "BLOCK"
+  isDemoData           Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+
+  @@index([sourceWalletId])
+  @@index([targetWalletId])
+  @@index([type])
+  @@index([createdAt])
+}

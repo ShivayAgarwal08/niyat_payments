@@ -71,6 +71,17 @@ const SecurityRunSchema = z.object({
   customPrompt: z.string().optional()
 });
 
+const TopUpWalletSchema = z.object({
+  amountPaise: z.number().int().positive('Amount must be positive integer paise'),
+  ownerId: z.string().optional()
+});
+
+const TransferP2PSchema = z.object({
+  recipientUpiId: z.string().min(3, 'Valid UPI ID required'),
+  amountPaise: z.number().int().positive('Amount must be positive integer paise'),
+  note: z.string().optional()
+});
+
 // --- Routes ---
 
 // Health Check (verifies database connectivity in production)
@@ -281,4 +292,56 @@ apiRouter.post('/security/run', async (req: Request, res: Response, next: NextFu
 apiRouter.get('/ai/status', (_req: Request, res: Response) => {
   const providers = aiService.getStatus();
   res.json({ success: true, providers });
+});
+
+// --- Pocket UPI Wallet Endpoints ---
+
+// Get current user simulated wallet summary
+apiRouter.get('/wallet', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const ownerId = typeof req.query.ownerId === 'string' ? req.query.ownerId : 'user_default';
+    const summary = await repository.getWallet(ownerId);
+    res.json({ success: true, ...summary });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Top-up simulated wallet with demo money
+apiRouter.post('/wallet/topup', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { amountPaise, ownerId } = TopUpWalletSchema.parse(req.body);
+    const summary = await repository.topUpWallet(amountPaise, ownerId || 'user_default');
+    res.json({
+      success: true,
+      message: `Added ₹${(amountPaise / 100).toFixed(2)} to simulated wallet`,
+      ...summary
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Execute P2P simulated transfer
+apiRouter.post('/wallet/transfer', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { recipientUpiId, amountPaise, note } = TransferP2PSchema.parse(req.body);
+    const result = await repository.transferP2P({
+      senderOwnerId: 'user_default',
+      recipientUpiId,
+      amountPaise,
+      note
+    });
+    res.json({ ...result });
+  } catch (err: any) {
+    if (err.message && err.message.includes('Insufficient wallet balance')) {
+      res.status(400).json({ success: false, code: 'INSUFFICIENT_BALANCE', error: err.message });
+      return;
+    }
+    if (err.message && err.message.includes('yourself')) {
+      res.status(400).json({ success: false, code: 'SELF_TRANSFER_FORBIDDEN', error: err.message });
+      return;
+    }
+    next(err);
+  }
 });
