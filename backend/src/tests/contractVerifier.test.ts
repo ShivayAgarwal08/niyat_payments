@@ -363,4 +363,125 @@ describe('Intent Contract & Blind Verifier', () => {
     const decisions = [resA.decision, resB.decision].sort();
     expect(decisions).toEqual(['ALLOW', 'BLOCK']);
   });
+
+  it('triggers ASK on slight price difference (+20%) for approximate budget ("around ₹150")', async () => {
+    const contract = createSignedIntentContract('Find me 1 litre of Amul Taaza milk for around ₹150.', {
+      ...validIntent,
+      quantity: 1,
+      maxBudgetPaise: 15000 // ₹150.00
+    });
+
+    const authorization: PurchaseAuthorization = {
+      contractId: contract.contractId,
+      productId: 'prod_amul_taaza',
+      productTitle: 'Amul Taaza Homogenised Toned Milk 1L',
+      brand: 'Amul',
+      variant: 'Taaza Toned',
+      merchantId: 'm_quickmart',
+      merchantName: 'QuickMart Express',
+      payeeAddress: 'quickmart@upi',
+      quantity: 1,
+      unit: 'Litre',
+      itemPricePaise: 16000,
+      deliveryFeePaise: 1500,
+      platformFeePaise: 500,
+      discountPaise: 0,
+      totalAmountPaise: 18000, // ₹180.00 (+20%)
+      userApproved: true,
+      authorizedAt: new Date().toISOString()
+    };
+
+    const result = await verifier.verify({
+      contract,
+      authorization,
+      merchantPayeeExpected: 'quickmart@upi'
+    });
+
+    expect(result.decision).toBe('ASK');
+    expect(result.reasons.some(r => r.includes('Price Variance Alert'))).toBe(true);
+
+    // If user explicitly confirms the variance, it must resolve to ALLOW
+    const confirmedResult = await verifier.verify({
+      contract,
+      authorization: { ...authorization, userConfirmedVariance: true },
+      merchantPayeeExpected: 'quickmart@upi',
+      userConfirmedVariance: true
+    });
+
+    expect(confirmedResult.decision).toBe('ALLOW');
+  });
+
+  it('BLOCKs inflated payment of ₹2,000 for ₹150 intent (Test B)', async () => {
+    const contract = createSignedIntentContract('Find me 1 litre of Amul Taaza milk for around ₹150.', {
+      ...validIntent,
+      quantity: 1,
+      maxBudgetPaise: 15000 // ₹150.00
+    });
+
+    const authorization: PurchaseAuthorization = {
+      contractId: contract.contractId,
+      productId: 'prod_amul_taaza',
+      productTitle: 'Amul Taaza Homogenised Toned Milk 1L',
+      brand: 'Amul',
+      variant: 'Taaza Toned',
+      merchantId: 'm_quickmart',
+      merchantName: 'QuickMart Express',
+      payeeAddress: 'quickmart@upi',
+      quantity: 1,
+      unit: 'Litre',
+      itemPricePaise: 195000,
+      deliveryFeePaise: 4000,
+      platformFeePaise: 1000,
+      discountPaise: 0,
+      totalAmountPaise: 200000, // ₹2,000.00 (+1,233%)
+      userApproved: true,
+      authorizedAt: new Date().toISOString()
+    };
+
+    const result = await verifier.verify({
+      contract,
+      authorization,
+      merchantPayeeExpected: 'quickmart@upi'
+    });
+
+    expect(result.decision).toBe('BLOCK');
+    expect(result.securityAlert).toContain('Budget Exceeded');
+  });
+
+  it('BLOCKs extreme manipulation of ₹5,000 for ₹150 intent (Test C)', async () => {
+    const contract = createSignedIntentContract('Find me 1 litre of Amul Taaza milk for around ₹150.', {
+      ...validIntent,
+      quantity: 1,
+      maxBudgetPaise: 15000 // ₹150.00
+    });
+
+    const authorization: PurchaseAuthorization = {
+      contractId: contract.contractId,
+      productId: 'prod_amul_taaza',
+      productTitle: 'Amul Taaza Homogenised Toned Milk 1L',
+      brand: 'Amul',
+      variant: 'Taaza Toned',
+      merchantId: 'm_quickmart',
+      merchantName: 'QuickMart Express',
+      payeeAddress: 'quickmart@upi',
+      quantity: 1,
+      unit: 'Litre',
+      itemPricePaise: 495000,
+      deliveryFeePaise: 4000,
+      platformFeePaise: 1000,
+      discountPaise: 0,
+      totalAmountPaise: 500000, // ₹5,000.00 (+3,233%)
+      userApproved: true,
+      authorizedAt: new Date().toISOString()
+    };
+
+    const result = await verifier.verify({
+      contract,
+      authorization,
+      merchantPayeeExpected: 'quickmart@upi'
+    });
+
+    expect(result.decision).toBe('BLOCK');
+    expect(result.securityAlert).toContain('Budget Exceeded');
+  });
 });

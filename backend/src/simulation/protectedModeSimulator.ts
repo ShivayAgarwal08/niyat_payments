@@ -235,6 +235,7 @@ export class ProtectedModeSimulator {
     assessmentId: string;
     userApproved: boolean;
     userAcknowledgedAdvisory?: boolean;
+    userConfirmedVariance?: boolean;
     customTotalAmountPaise?: number; // for testing tamper scenarios
     customPayeeAddress?: string;     // for testing attack scenarios
     customQuantity?: number;         // for testing quantity inflation
@@ -244,7 +245,8 @@ export class ProtectedModeSimulator {
       selectedOffer,
       assessmentId,
       userApproved,
-      userAcknowledgedAdvisory
+      userAcknowledgedAdvisory,
+      userConfirmedVariance
     } = params;
 
     // 1. Contract verification
@@ -372,6 +374,7 @@ export class ProtectedModeSimulator {
       discountPaise: selectedOffer.discountPaise,
       totalAmountPaise: finalAmountPaise,
       userApproved,
+      userConfirmedVariance,
       authorizedAt: new Date().toISOString()
     };
 
@@ -379,7 +382,8 @@ export class ProtectedModeSimulator {
       contract,
       authorization,
       merchantPayeeExpected: selectedOffer.payeeAddress,
-      skipNonceClaim: true
+      skipNonceClaim: true,
+      userConfirmedVariance
     });
 
     const marketIntelligence = (await this.repository.getMarketIntelligence(product.id))!;

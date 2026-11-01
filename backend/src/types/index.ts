@@ -68,6 +68,7 @@ export interface PurchaseAuthorization {
   discountPaise: number;
   totalAmountPaise: number;
   userApproved: boolean;
+  userConfirmedVariance?: boolean;
   authorizedAt: string;
 }
 
@@ -76,6 +77,7 @@ export interface BlindVerifierInput {
   authorization: PurchaseAuthorization;
   merchantPayeeExpected?: string;
   skipNonceClaim?: boolean;
+  userConfirmedVariance?: boolean;
 }
 
 export interface BlindVerifierDecision {

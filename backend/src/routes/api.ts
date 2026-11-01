@@ -61,6 +61,7 @@ const ProtectedExecuteSchema = z.object({
   assessmentId: z.string().min(1, 'assessmentId is required'),
   userApproved: z.boolean(),
   userAcknowledgedAdvisory: z.boolean().optional(),
+  userConfirmedVariance: z.boolean().optional(),
   customTotalAmountPaise: z.number().optional(),
   customPayeeAddress: z.string().optional(),
   customQuantity: z.number().optional()

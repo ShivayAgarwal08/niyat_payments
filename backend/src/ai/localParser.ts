@@ -10,12 +10,12 @@ export class LocalDeterministicParser {
     const lower = text.toLowerCase();
 
     // 1. Budget extraction
-    // Match ₹150, Rs 150, Rs. 150, 150 rupees, under 150, below 150, max 150, budget 150, etc.
+    // Match ₹150, Rs 150, Rs. 150, 150 rupees, under 150, below 150, around 150, approx 150, 150 me, etc.
     let maxBudgetPaise = 0;
     const budgetMatch =
-      lower.match(/(?:under|below|max|budget|within|upto|less than)\s*(?:₹|rs\.?|inr)?\s*(\d+(?:,\d+)*(?:\.\d+)?)/i) ||
+      lower.match(/(?:under|below|max|budget|within|upto|less than|around|approx|approximately|about|for around|for approx)\s*(?:₹|rs\.?|inr)?\s*(\d+(?:,\d+)*(?:\.\d+)?)/i) ||
       lower.match(/(?:₹|rs\.?|inr)\s*(\d+(?:,\d+)*(?:\.\d+)?)/i) ||
-      lower.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:rupees|rs|inr)/i);
+      lower.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(?:rupees|rs|inr|rupaye|me|mein)/i);
 
     if (budgetMatch && budgetMatch[1]) {
       const cleanNum = parseFloat(budgetMatch[1].replace(/,/g, ''));

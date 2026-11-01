@@ -42,19 +42,19 @@ export const TransactionHistoryPage: React.FC = () => {
       <div className="flex items-start justify-between gap-2">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
-              <History className="w-3.5 h-3.5 text-slate-700" />
-              Audit Trail
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+              <History className="w-3.5 h-3.5 text-blue-600" />
+              Orders & Wall History
             </span>
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white text-slate-500 border border-slate-200">
-              DEMO DATA
+              SIMULATED
             </span>
           </div>
           <h1 className="text-xl font-black text-slate-900 tracking-tight">
-            Transaction History
+            Orders & Payment History
           </h1>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Record of simulated purchases across Normal Mode and NIYAT Protected Mode.
+            Immutable audit record of shopping orders intercepted and verified by the NIYAT Wall.
           </p>
         </div>
 

@@ -25,13 +25,19 @@ const AppLayout: React.FC = () => {
           <Routes>
             <Route path="/" element={<SplashScreen />} />
             <Route path="/home" element={<HomePage />} />
-            <Route path="/normal-mode" element={<NormalShoppingPage />} />
+            <Route path="/shop" element={<ProtectedShoppingPage />} />
             <Route path="/protected-mode" element={<ProtectedShoppingPage />} />
-            <Route path="/pocket-pay" element={<PocketPayPage />} />
+            <Route path="/explore" element={<ShoppingCatalogPage />} />
             <Route path="/catalog" element={<ShoppingCatalogPage />} />
-            <Route path="/security-lab" element={<SecurityLabPage />} />
+            <Route path="/orders" element={<TransactionHistoryPage />} />
             <Route path="/transactions" element={<TransactionHistoryPage />} />
+            <Route path="/security" element={<SecurityLabPage />} />
+            <Route path="/security-lab" element={<SecurityLabPage />} />
+            <Route path="/profile" element={<SettingsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/wallet" element={<PocketPayPage />} />
+            <Route path="/pocket-pay" element={<PocketPayPage />} />
+            <Route path="/normal-mode" element={<NormalShoppingPage />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
         </main>

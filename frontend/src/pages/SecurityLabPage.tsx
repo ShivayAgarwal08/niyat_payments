@@ -63,19 +63,19 @@ export const SecurityLabPage: React.FC = () => {
       {/* Header */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
-            <FlaskConical className="w-3.5 h-3.5 text-slate-700" />
-            Security Sandbox
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+            <FlaskConical className="w-3.5 h-3.5 text-blue-600" />
+            NIYAT Wall Security Lab
           </span>
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            10 Test Vectors
+            10 Attack Vectors
           </span>
         </div>
         <h1 className="text-xl font-black text-slate-900 tracking-tight">
-          Adversarial Security Lab
+          Adversarial Attack & Security Lab
         </h1>
         <p className="text-xs text-slate-600 leading-relaxed">
-          Executes real adversarial attacks against the deterministic Blind Verifier to prove zero prompt injection bypasses.
+          Executes real adversarial attacks against the NIYAT Wall and Blind Verifier to prove zero bypasses across price manipulation, payee diversion, product hijacking, and replay attacks.
         </p>
       </div>
 

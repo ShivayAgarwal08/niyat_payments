@@ -126,10 +126,28 @@ export class BlindVerifier {
     // Check 9 & 10: Final landed amount and Budget
     const withinBudget = authorization.totalAmountPaise <= contract.maxBudgetPaise;
     if (!withinBudget) {
-      const diffRupees = ((authorization.totalAmountPaise - contract.maxBudgetPaise) / 100).toFixed(2);
-      reasons.push(`UNAUTHORIZED: Final landed price ₹${(authorization.totalAmountPaise / 100).toFixed(2)} exceeds maximum budget ₹${(contract.maxBudgetPaise / 100).toFixed(2)} by ₹${diffRupees}.`);
-      isBlocked = true;
-      securityAlert = 'Budget Exceeded: Transaction blocked by budget firewall';
+      const diffPaise = authorization.totalAmountPaise - contract.maxBudgetPaise;
+      const diffPct = (diffPaise / contract.maxBudgetPaise) * 100;
+      const diffRupees = (diffPaise / 100).toFixed(2);
+      const isApproximateBudget =
+        contract.userRequest.toLowerCase().includes('around') ||
+        contract.userRequest.toLowerCase().includes('approx') ||
+        contract.userRequest.toLowerCase().includes('about') ||
+        Boolean((contract as any).budgetTolerancePct);
+
+      if (isApproximateBudget && diffPct <= 25) {
+        // Slight variance on approximate budget triggers ASK
+        needsConfirmation = true;
+        reasons.push(
+          `Price Variance Alert: Landed price ₹${(authorization.totalAmountPaise / 100).toFixed(2)} exceeds estimated budget ₹${(contract.maxBudgetPaise / 100).toFixed(2)} by ${diffPct.toFixed(1)}% (₹${diffRupees}). User confirmation required (ASK).`
+        );
+      } else {
+        reasons.push(
+          `UNAUTHORIZED: Final landed price ₹${(authorization.totalAmountPaise / 100).toFixed(2)} exceeds maximum budget ₹${(contract.maxBudgetPaise / 100).toFixed(2)} by ₹${diffRupees}.`
+        );
+        isBlocked = true;
+        securityAlert = 'Budget Exceeded: Transaction blocked by budget firewall';
+      }
     }
 
     // Check 11 & 12: Purchase authorization validity & user approval
@@ -145,7 +163,12 @@ export class BlindVerifier {
     if (isBlocked) {
       decision = 'BLOCK';
     } else if (needsConfirmation) {
-      decision = 'ASK';
+      if (input.userConfirmedVariance || authorization.userConfirmedVariance) {
+        decision = 'ALLOW';
+        reasons.push('User explicitly reviewed and approved the revised price variance / substitution.');
+      } else {
+        decision = 'ASK';
+      }
     } else {
       if (input.skipNonceClaim) {
         // Nonce freshness was verified in Check 3; actual consumption is deferred to the atomic transaction

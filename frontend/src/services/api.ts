@@ -77,6 +77,7 @@ export const api = {
     assessmentId: string;
     userApproved: boolean;
     userAcknowledgedAdvisory?: boolean;
+    userConfirmedVariance?: boolean;
     customTotalAmountPaise?: number;
     customPayeeAddress?: string;
     customQuantity?: number;

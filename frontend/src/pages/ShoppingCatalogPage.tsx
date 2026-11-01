@@ -5,12 +5,14 @@ import { ProductItem } from '../services/types.js';
 import { PriceFormatter } from '../components/PriceFormatter.js';
 import {
   Search,
-  ShieldCheck,
   ShoppingBag,
   Store,
   X,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  ArrowRight,
+  Truck
 } from 'lucide-react';
 
 export const ShoppingCatalogPage: React.FC = () => {
@@ -44,31 +46,32 @@ export const ShoppingCatalogPage: React.FC = () => {
     fetchCatalog();
   };
 
-  const handleTestInProtectedMode = (p: ProductItem) => {
+  const handleShopWithNiyat = (p: ProductItem) => {
     setActiveModalProduct(null);
-    navigate('/protected-mode', {
-      state: { prefilledPrompt: `Buy 1 ${p.brand} ${p.title} under ₹${Math.ceil((p.basePricePaise * 1.2) / 100)}.` }
+    const approxBudget = Math.ceil(((p.basePricePaise + (p.merchant.deliveryFeePaise || 0)) * 1.2) / 100);
+    navigate('/shop', {
+      state: { prefilledPrompt: `Find me 1 ${p.brand} ${p.variant || p.title} for around ₹${approxBudget}.` }
     });
   };
 
   return (
-    <div className="px-4 py-6 space-y-4">
+    <div className="px-4 py-6 space-y-4 animate-fade-in pb-20">
       {/* Header */}
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
-            <ShoppingBag className="w-3.5 h-3.5 text-slate-700" />
-            Marketplace
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+            <ShoppingBag className="w-3.5 h-3.5 text-blue-600" />
+            Explore Marketplace
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white text-slate-500 border border-slate-200">
-            DEMO DATA
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+            SYNTHETIC_DEMO
           </span>
         </div>
         <h1 className="text-xl font-black text-slate-900 tracking-tight">
-          Product Catalog & Payloads
+          Explore Products & Merchants
         </h1>
         <p className="text-xs text-slate-600 leading-relaxed">
-          Synthetic catalog items containing hidden prompt injection instructions.
+          Compare merchant prices, delivery fees, and synthetic catalogue items. Every purchase is guarded by the NIYAT Wall.
         </p>
       </div>
 
@@ -106,78 +109,89 @@ export const ShoppingCatalogPage: React.FC = () => {
         {loading ? (
           <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
             <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-slate-400" />
-            <span>Loading catalog items...</span>
+            <span>Loading catalogue items...</span>
           </div>
         ) : products.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
             No products match your search.
           </div>
         ) : (
-          products.map(product => (
-            <div
-              key={product.id}
-              className="fintech-card p-4 space-y-3 bg-white"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    {product.category} • {product.brand}
-                  </span>
-                  <h3 className="font-bold text-sm text-slate-900 leading-snug">
-                    {product.title}
-                  </h3>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-0.5">
-                    <Store className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{product.merchant.name}</span>
-                    <span>•</span>
-                    <span className="font-mono text-[11px]">{product.merchant.payeeAddress}</span>
+          products.map(product => {
+            const landedPaise = product.basePricePaise + (product.merchant.deliveryFeePaise || 0) + (product.merchant.platformFeePaise || 0) - (product.discountPaise || 0);
+
+            return (
+              <div
+                key={product.id}
+                className="card p-4 space-y-3 bg-white border border-slate-200 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {product.category} • {product.brand}
+                    </span>
+                    <h3 className="font-bold text-sm text-slate-900 leading-snug">
+                      {product.title}
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 pt-0.5">
+                      <Store className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="font-semibold text-slate-700">{product.merchant.name}</span>
+                      <span>•</span>
+                      <span className="font-mono text-[10px] text-slate-400">{product.merchant.payeeAddress}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="text-base font-extrabold text-slate-900 block font-mono">
+                      <PriceFormatter paise={landedPaise} />
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">Landed Price</span>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <span className="text-base font-extrabold text-slate-900 block">
-                    <PriceFormatter paise={product.basePricePaise} />
-                  </span>
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Delivery: ₹{((product.merchant.deliveryFeePaise || 0) / 100).toFixed(2)}</span>
+                  </div>
+                  <div>
+                    Base: ₹{(product.basePricePaise / 100).toFixed(2)}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
                   {product.maliciousInstruction && (
-                    <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 mt-1">
-                      Injected
-                    </span>
+                    <button
+                      onClick={() => setActiveModalProduct(product)}
+                      className="py-2 px-3 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold border border-rose-200 flex items-center justify-center gap-1.5 transition touch-target"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Attack Payload</span>
+                    </button>
                   )}
+
+                  <button
+                    onClick={() => handleShopWithNiyat(product)}
+                    className="flex-1 py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition touch-target shadow-2xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Shop with NIYAT Wall</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
-                {product.maliciousInstruction && (
-                  <button
-                    onClick={() => setActiveModalProduct(product)}
-                    className="flex-1 py-2 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 flex items-center justify-center gap-1.5 transition touch-target"
-                  >
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                    <span>View Attack Payload</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => handleTestInProtectedMode(product)}
-                  className="flex-1 py-2 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition touch-target"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Test in Protected Mode</span>
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
       {/* Attack Payload Modal */}
       {activeModalProduct && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-white rounded-2xl p-5 border border-slate-200 shadow-xl space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-rose-600" />
-                Hidden Prompt Injection Payload
+                Hidden Injection Payload
               </span>
               <button
                 onClick={() => setActiveModalProduct(null)}
@@ -203,10 +217,10 @@ export const ShoppingCatalogPage: React.FC = () => {
                 Close
               </button>
               <button
-                onClick={() => handleTestInProtectedMode(activeModalProduct)}
+                onClick={() => handleShopWithNiyat(activeModalProduct)}
                 className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold touch-target"
               >
-                Test Protected Mode
+                Test NIYAT Wall
               </button>
             </div>
           </div>

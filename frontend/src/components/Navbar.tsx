@@ -1,19 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { api } from '../services/api.js';
+import { WalletSummary } from '../services/types.js';
 import {
   Shield,
   ShieldCheck,
   ShoppingBag,
-  Send,
   History,
-  Home
+  Home,
+  Compass,
+  User,
+  Wallet
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
+  const [wallet, setWallet] = useState<WalletSummary | null>(null);
 
-  const isActive = (path: string) => {
-    return location.pathname === path;
+  useEffect(() => {
+    api.getWallet('user_default')
+      .then(setWallet)
+      .catch(() => {});
+  }, [location.pathname]);
+
+  const isActive = (paths: string[]) => {
+    return paths.includes(location.pathname);
   };
 
   return (
@@ -27,12 +38,12 @@ export const Navbar: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-base tracking-tight text-slate-900">NIYAT</span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                Pocket UPI
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                Wall Active
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium">
-              Intent-Secured Simulated Payments
+            <p className="text-[11px] text-slate-500 font-medium leading-tight">
+              AI Shopping Payment Firewall
             </p>
           </div>
         </Link>
@@ -40,94 +51,100 @@ export const Navbar: React.FC = () => {
         {/* Top Right Quick Shortcuts */}
         <div className="flex items-center gap-1.5">
           <Link
-            to="/security-lab"
-            title="Firewall Simulations"
-            className={`px-2 py-1 rounded-lg text-xs font-semibold transition touch-target flex items-center gap-1 ${
-              isActive('/security-lab') || isActive('/normal-mode')
-                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200'
-            }`}
+            to="/wallet"
+            title="Pocket UPI Wallet"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 transition touch-target text-xs font-mono font-bold"
           >
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span className="text-[11px]">Lab</span>
+            <Wallet className="w-3.5 h-3.5 text-blue-600" />
+            <span>₹{wallet ? wallet.balanceRupees.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '5,000'}</span>
+          </Link>
+          <Link
+            to="/profile"
+            title="User Profile & Settings"
+            className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition touch-target flex items-center justify-center"
+          >
+            <User className="w-4 h-4 text-slate-700" />
           </Link>
         </div>
       </header>
 
-      {/* Fixed Mobile Bottom Navigation Bar (5 Core Sections: Home, Shop, Pay, Activity, Security) */}
+      {/* Fixed Mobile Bottom Navigation Bar (5 Core Sections: Home, Explore, Shop, Orders, Security) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 max-w-[540px] mx-auto sm:rounded-b-[28px] px-1 py-1.5 shadow-elevated">
         <div className="grid grid-cols-5 items-center">
-          {/* Tab 1: Home */}
+          {/* Tab 1: Home (Shopping Assistant) */}
           <Link
             to="/home"
             className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition touch-target ${
-              isActive('/home')
-                ? 'text-slate-900'
+              isActive(['/home', '/'])
+                ? 'text-blue-600'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <Home className={`w-5 h-5 mb-0.5 ${isActive('/home') ? 'stroke-[2.5px] text-slate-900' : ''}`} />
-            <span className={`text-[10px] ${isActive('/home') ? 'font-bold text-slate-900' : 'font-medium'}`}>
+            <Home className={`w-5 h-5 mb-0.5 ${isActive(['/home', '/']) ? 'stroke-[2.5px] text-blue-600' : ''}`} />
+            <span className={`text-[10px] ${isActive(['/home', '/']) ? 'font-bold text-blue-600' : 'font-medium'}`}>
               Home
             </span>
           </Link>
 
-          {/* Tab 2: Shop (Smart Shopping + Protected Mode) */}
+          {/* Tab 2: Explore (Products & Merchants) */}
           <Link
-            to="/protected-mode"
+            to="/explore"
             className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition touch-target ${
-              isActive('/protected-mode') || isActive('/catalog')
+              isActive(['/explore', '/catalog'])
                 ? 'text-blue-600 font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <ShoppingBag className={`w-5 h-5 mb-0.5 ${isActive('/protected-mode') || isActive('/catalog') ? 'stroke-[2.5px] text-blue-600' : ''}`} />
-            <span className={`text-[10px] ${isActive('/protected-mode') || isActive('/catalog') ? 'font-bold text-blue-600' : 'font-medium'}`}>
-              Shop
+            <Compass className={`w-5 h-5 mb-0.5 ${isActive(['/explore', '/catalog']) ? 'stroke-[2.5px] text-blue-600' : ''}`} />
+            <span className={`text-[10px] ${isActive(['/explore', '/catalog']) ? 'font-bold text-blue-600' : 'font-medium'}`}>
+              Explore
             </span>
           </Link>
 
-          {/* Tab 3: Pay (Pocket UPI Wallet & P2P) */}
+          {/* Tab 3: Shop & Wall (Active AI Shopping & Payment Interception) */}
           <Link
-            to="/pocket-pay"
+            to="/shop"
             className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition touch-target ${
-              isActive('/pocket-pay')
-                ? 'text-indigo-600 font-bold'
+              isActive(['/shop', '/protected-mode'])
+                ? 'text-blue-600 font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <Send className={`w-5 h-5 mb-0.5 ${isActive('/pocket-pay') ? 'stroke-[2.5px] text-indigo-600' : ''}`} />
-            <span className={`text-[10px] ${isActive('/pocket-pay') ? 'font-bold text-indigo-600' : 'font-medium'}`}>
-              Pay
+            <div className="relative">
+              <ShoppingBag className={`w-5 h-5 mb-0.5 ${isActive(['/shop', '/protected-mode']) ? 'stroke-[2.5px] text-blue-600' : ''}`} />
+              <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-600" />
+            </div>
+            <span className={`text-[10px] ${isActive(['/shop', '/protected-mode']) ? 'font-bold text-blue-600' : 'font-medium'}`}>
+              Shop & Wall
             </span>
           </Link>
 
-          {/* Tab 4: Activity (Ledger & Audit Trail) */}
+          {/* Tab 4: Orders (Shopping & Payment History) */}
           <Link
-            to="/transactions"
+            to="/orders"
             className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition touch-target ${
-              isActive('/transactions')
-                ? 'text-slate-900'
+              isActive(['/orders', '/transactions'])
+                ? 'text-blue-600 font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <History className={`w-5 h-5 mb-0.5 ${isActive('/transactions') ? 'stroke-[2.5px] text-slate-900' : ''}`} />
-            <span className={`text-[10px] ${isActive('/transactions') ? 'font-bold text-slate-900' : 'font-medium'}`}>
-              Activity
+            <History className={`w-5 h-5 mb-0.5 ${isActive(['/orders', '/transactions']) ? 'stroke-[2.5px] text-blue-600' : ''}`} />
+            <span className={`text-[10px] ${isActive(['/orders', '/transactions']) ? 'font-bold text-blue-600' : 'font-medium'}`}>
+              Orders
             </span>
           </Link>
 
           {/* Tab 5: Security (Firewall & Attack Lab) */}
           <Link
-            to="/security-lab"
+            to="/security"
             className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition touch-target ${
-              isActive('/security-lab') || isActive('/normal-mode')
+              isActive(['/security', '/security-lab', '/normal-mode'])
                 ? 'text-emerald-700 font-bold'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <ShieldCheck className={`w-5 h-5 mb-0.5 ${isActive('/security-lab') || isActive('/normal-mode') ? 'stroke-[2.5px] text-emerald-700' : ''}`} />
-            <span className={`text-[10px] ${isActive('/security-lab') || isActive('/normal-mode') ? 'font-bold text-emerald-700' : 'font-medium'}`}>
+            <ShieldCheck className={`w-5 h-5 mb-0.5 ${isActive(['/security', '/security-lab', '/normal-mode']) ? 'stroke-[2.5px] text-emerald-700' : ''}`} />
+            <span className={`text-[10px] ${isActive(['/security', '/security-lab', '/normal-mode']) ? 'font-bold text-emerald-700' : 'font-medium'}`}>
               Security
             </span>
           </Link>
