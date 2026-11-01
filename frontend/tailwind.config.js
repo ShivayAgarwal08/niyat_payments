@@ -8,29 +8,36 @@ export default {
     extend: {
       colors: {
         niyat: {
-          bg: '#F8FAFC',
+          bg: '#F3F1F8',
           card: '#FFFFFF',
-          primary: '#2563EB',
-          'primary-hover': '#1D4ED8',
-          success: '#16A34A',
-          'success-light': '#DCFCE7',
-          warning: '#D97706',
-          'warning-light': '#FEF3C7',
-          danger: '#DC2626',
-          'danger-light': '#FEE2E2',
-          text: '#172033',
-          muted: '#64748B',
-          border: '#E2E8F0',
-          hover: '#F1F5F9'
+          primary: '#663A91',
+          'primary-hover': '#552F7A',
+          'primary-light': '#F3EDF9',
+          purple: '#663A91',
+          'purple-dark': '#552F7A',
+          'purple-light': '#F3EDF9',
+          plum: '#351B4D',
+          'plum-dark': '#261633',
+          text: '#261633',
+          muted: '#766B82',
+          border: '#E8E2EF',
+          hover: '#ECE7F4',
+          success: '#168451',
+          'success-light': '#E8F6EE',
+          warning: '#D99A32',
+          'warning-light': '#FDF5E7',
+          danger: '#D64C55',
+          'danger-light': '#FBEDED'
         }
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
-        subtle: '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
-        card: '0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
-        elevated: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.04)',
+        subtle: '0 1px 2px 0 rgba(38, 22, 51, 0.04)',
+        card: '0 2px 8px -2px rgba(53, 27, 77, 0.06), 0 1px 3px 0 rgba(53, 27, 77, 0.04)',
+        elevated: '0 8px 20px -4px rgba(53, 27, 77, 0.12), 0 3px 6px -2px rgba(53, 27, 77, 0.06)',
+        plum: '0 8px 24px -4px rgba(53, 27, 77, 0.25)',
       }
     },
   },

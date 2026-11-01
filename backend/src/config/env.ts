@@ -10,11 +10,11 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().optional().default(''),
   DIRECT_URL: z.string().optional().default(''),
   GEMINI_API_KEY: z.string().optional().default(''),
-  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
+  GEMINI_MODEL: z.string().default('gemini-3-flash-preview'),
   GROQ_API_KEY: z.string().optional().default(''),
-  GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
+  GROQ_MODEL: z.string().default('qwen/qwen3.8-27b'),
   OPENROUTER_API_KEY: z.string().optional().default(''),
-  OPENROUTER_MODEL: z.string().default('meta-llama/llama-3.3-70b-instruct'),
+  OPENROUTER_MODEL: z.string().default('nvidia/nemotron-3.5-lightning:free'),
   CONTRACT_SIGNING_SECRET: z.string().optional().default(''),
   CORS_ORIGIN: z.string().default('http://localhost:5173')
 }).superRefine((data, ctx) => {

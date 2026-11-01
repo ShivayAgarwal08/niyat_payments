@@ -34,7 +34,7 @@ describe('NIYAT Backend API Endpoints', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.intent.preferredBrand).toBe('Amul');
     expect(res.body.intent.maxBudgetPaise).toBe(15000);
-  });
+  }, 15000);
 
   it('POST /api/simulation/normal runs vulnerable educational simulation', async () => {
     const res = await request(app)
@@ -46,7 +46,7 @@ describe('NIYAT Backend API Endpoints', () => {
     expect(res.body.simulation.isEducationalVulnerableSimulation).toBe(true);
     expect(res.body.simulation.attackPayloadDetected).toBeDefined();
     expect(res.body.simulation.simulatedPaymentExecution.status).toBe('UNAUTHORIZED_SIMULATED_PAYMENT');
-  });
+  }, 15000);
 
   it('POST /api/simulation/protected/prepare generates contract and market intelligence', async () => {
     const res = await request(app)
@@ -58,7 +58,7 @@ describe('NIYAT Backend API Endpoints', () => {
     expect(res.body.contract.signature).toBeDefined();
     expect(res.body.marketIntelligence).toBeDefined();
     expect(res.body.recommendedOffer).toBeDefined();
-  });
+  }, 15000);
 
   it('GET /api/security/scenarios returns all 10 scenarios', async () => {
     const res = await request(app).get('/api/security/scenarios');
@@ -74,7 +74,7 @@ describe('NIYAT Backend API Endpoints', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.result.blocked).toBe(true);
-  });
+  }, 15000);
 
   it('GET /api/ai/status returns provider tiers', async () => {
     const res = await request(app).get('/api/ai/status');

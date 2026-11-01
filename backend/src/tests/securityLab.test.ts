@@ -1,11 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { SecurityLabService, SECURITY_SCENARIOS } from '../services/securityLabService.js';
 import { MarketplaceRepository } from '../db/repository.js';
 import { AIService } from '../ai/aiService.js';
+import { LocalDeterministicParser } from '../ai/localParser.js';
 
 describe('Security Lab All 10 Attack Scenarios', () => {
-  const repo = new MarketplaceRepository();
+  const repo = new MarketplaceRepository({ forceMemoryOnly: true });
   const aiService = new AIService();
+  const localParser = new LocalDeterministicParser();
+
+  // Mock aiService for fast, deterministic, offline attack scenario testing
+  vi.spyOn(aiService, 'parseIntent').mockImplementation(async (prompt: string) => ({
+    intent: localParser.parse(prompt),
+    provider: 'local_fallback',
+    modelUsed: 'NIYAT-Deterministic-RegexRules-v1',
+    latencyMs: 0
+  }));
+
   const securityLab = new SecurityLabService(repo, aiService);
 
   it('contains exactly 10 distinct attack scenarios', () => {

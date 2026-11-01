@@ -73,7 +73,9 @@ export const api = {
   executeProtected: async (payload: {
     contract: SignedIntentContract;
     selectedOffer: any;
+    assessmentId: string;
     userApproved: boolean;
+    userAcknowledgedAdvisory?: boolean;
     customTotalAmountPaise?: number;
     customPayeeAddress?: string;
     customQuantity?: number;

@@ -1,179 +1,179 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Shield, ShieldAlert, ShoppingBag, FlaskConical, History, Settings, Menu, X } from 'lucide-react';
+import React from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  ShoppingBag,
+  FlaskConical,
+  History,
+  Settings,
+  Home
+} from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const isActive = (path: string) => {
     return location.pathname === path;
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo & Product Tagline */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-subtle group-hover:bg-blue-700 transition">
-              <Shield className="w-5 h-5" />
+    <>
+      {/* Sleek Mobile Top App Bar */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E8E2EF] px-4 py-2.5 flex items-center justify-between shadow-subtle">
+        <Link to="/home" className="flex items-center gap-2.5 group">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#351B4D] to-[#663A91] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
+            <Shield className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-base tracking-tight text-[#261633]">NIYAT</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[#F3EDF9] text-[#663A91] border border-[#E8E2EF]">
+                Firewall
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-lg tracking-tight text-[#172033]">NIYAT</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                  Payments
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-normal hidden sm:block">
-                The Intent Firewall for AI Shopping Agents
-              </p>
-            </div>
+            <p className="text-[10px] text-[#766B82] font-medium leading-none">
+              AI Shopping Agent Defense
+            </p>
+          </div>
+        </Link>
+
+        {/* Top Right Quick Shortcuts */}
+        <div className="flex items-center gap-1.5">
+          <Link
+            to="/transactions"
+            title="Audit Trail"
+            className={`p-2 rounded-xl text-xs font-medium transition ${
+              isActive('/transactions')
+                ? 'bg-[#F3EDF9] text-[#663A91] font-semibold'
+                : 'text-[#766B82] hover:text-[#261633] hover:bg-[#F3F1F8]'
+            }`}
+          >
+            <History className="w-4 h-4" />
           </Link>
 
-          {/* Center: The Two Primary Shopping Modes (in exact order: Normal Mode -> NIYAT Protected Mode) */}
-          <div className="hidden md:flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200">
-            {/* Mode 1: Normal Shopping Mode */}
-            <Link
-              to="/normal-mode"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                isActive('/normal-mode')
-                  ? 'bg-white text-rose-700 shadow-subtle border border-rose-200 font-semibold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
-              <span>1. Normal Mode (Vulnerable)</span>
-            </Link>
-
-            {/* Mode 2: NIYAT Protected Mode */}
-            <Link
-              to="/protected-mode"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                isActive('/protected-mode')
-                  ? 'bg-white text-blue-700 shadow-subtle border border-blue-200 font-semibold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5 text-blue-600" />
-              <span>2. NIYAT Protected Mode</span>
-            </Link>
-          </div>
-
-          {/* Right Navigation: Marketplace, Security Lab, Transactions, Settings */}
-          <div className="hidden lg:flex items-center gap-2">
-            <Link
-              to="/catalog"
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${
-                isActive('/catalog') ? 'bg-slate-100 text-blue-600 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              Marketplace
-            </Link>
-
-            <Link
-              to="/security-lab"
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${
-                isActive('/security-lab') ? 'bg-slate-100 text-blue-600 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <FlaskConical className="w-3.5 h-3.5" />
-              Security Lab
-            </Link>
-
-            <Link
-              to="/transactions"
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition ${
-                isActive('/transactions') ? 'bg-slate-100 text-blue-600 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              Audit Log
-            </Link>
-
-            <Link
-              to="/settings"
-              className={`p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition ${
-                isActive('/settings') ? 'bg-slate-100 text-blue-600' : ''
-              }`}
-              title="Settings & AI Status"
-            >
-              <Settings className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center gap-2">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition"
-              aria-label="Toggle Menu"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
+          <Link
+            to="/settings"
+            title="AI Provider Tiers"
+            className={`p-2 rounded-xl text-xs font-medium transition ${
+              isActive('/settings')
+                ? 'bg-[#F3EDF9] text-[#663A91] font-semibold'
+                : 'text-[#766B82] hover:text-[#261633] hover:bg-[#F3F1F8]'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+          </Link>
         </div>
+      </header>
+
+      {/* Mode Switcher Pill Banner (Sub-header) */}
+      <div className="bg-[#FFFFFF] border-b border-[#E8E2EF] px-3 py-1.5 flex items-center justify-center gap-2">
+        <button
+          onClick={() => navigate('/normal-mode')}
+          className={`flex-1 py-1.5 px-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 transition ${
+            isActive('/normal-mode')
+              ? 'bg-[#FBEDED] text-[#D64C55] border border-[#F7D2D5] shadow-xs'
+              : 'text-[#766B82] hover:bg-[#F3F1F8]'
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5 shrink-0 text-[#D64C55]" />
+          <span>1. Normal (Vulnerable)</span>
+        </button>
+
+        <button
+          onClick={() => navigate('/protected-mode')}
+          className={`flex-1 py-1.5 px-2.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 transition ${
+            isActive('/protected-mode')
+              ? 'bg-[#663A91] text-white shadow-xs'
+              : 'text-[#766B82] hover:bg-[#F3F1F8]'
+          }`}
+        >
+          <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${isActive('/protected-mode') ? 'text-white' : 'text-[#663A91]'}`} />
+          <span>2. NIYAT Protected</span>
+        </button>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-2">
-          <div className="text-xs font-semibold uppercase text-slate-400 px-2 py-1">Primary Shopping Modes</div>
+      {/* Fixed Mobile Bottom Navigation Bar (SwitchPay-inspired) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-[#E8E2EF] max-w-[540px] mx-auto sm:rounded-b-[32px] px-2 py-1.5 shadow-elevated">
+        <div className="flex items-center justify-around">
+          {/* Tab 1: Home */}
           <Link
-            to="/normal-mode"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-700 bg-rose-50/60 border border-rose-100"
+            to="/home"
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
+              isActive('/home')
+                ? 'text-[#663A91]'
+                : 'text-[#766B82] hover:text-[#261633]'
+            }`}
           >
-            <ShieldAlert className="w-4 h-4 text-rose-600" />
-            1. Normal Shopping Mode (Vulnerable)
-          </Link>
-          <Link
-            to="/protected-mode"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-blue-700 bg-blue-50/60 border border-blue-100"
-          >
-            <Shield className="w-4 h-4 text-blue-600" />
-            2. NIYAT Protected Shopping Mode
+            <Home className="w-5 h-5 mb-0.5" />
+            <span className={`text-[10px] ${isActive('/home') ? 'font-bold text-[#663A91]' : 'font-medium'}`}>
+              Home
+            </span>
           </Link>
 
-          <div className="border-t border-slate-100 my-2 pt-2">
-            <Link
-              to="/catalog"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <ShoppingBag className="w-4 h-4 text-slate-500" />
-              Marketplace Catalog
-            </Link>
-            <Link
-              to="/security-lab"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <FlaskConical className="w-4 h-4 text-slate-500" />
-              Security Lab (10 Scenarios)
-            </Link>
-            <Link
-              to="/transactions"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <History className="w-4 h-4 text-slate-500" />
-              Transaction History
-            </Link>
-            <Link
-              to="/settings"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <Settings className="w-4 h-4 text-slate-500" />
-              Settings & AI Provider Status
-            </Link>
-          </div>
+          {/* Tab 2: Normal Shopping */}
+          <Link
+            to="/normal-mode"
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
+              isActive('/normal-mode')
+                ? 'text-[#D64C55]'
+                : 'text-[#766B82] hover:text-[#261633]'
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5 mb-0.5" />
+            <span className={`text-[10px] ${isActive('/normal-mode') ? 'font-bold text-[#D64C55]' : 'font-medium'}`}>
+              Normal
+            </span>
+          </Link>
+
+          {/* Tab 3: Protected Shopping (Centerpiece Action) */}
+          <Link
+            to="/protected-mode"
+            className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition ${
+              isActive('/protected-mode')
+                ? 'bg-[#663A91] text-white shadow-md -translate-y-1'
+                : 'text-[#663A91] hover:bg-[#F3EDF9]'
+            }`}
+          >
+            <ShieldCheck className="w-5 h-5 mb-0.5" />
+            <span className={`text-[10px] ${isActive('/protected-mode') ? 'font-bold text-white' : 'font-semibold text-[#663A91]'}`}>
+              Protected
+            </span>
+          </Link>
+
+          {/* Tab 4: Marketplace */}
+          <Link
+            to="/catalog"
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
+              isActive('/catalog')
+                ? 'text-[#663A91]'
+                : 'text-[#766B82] hover:text-[#261633]'
+            }`}
+          >
+            <ShoppingBag className="w-5 h-5 mb-0.5" />
+            <span className={`text-[10px] ${isActive('/catalog') ? 'font-bold text-[#663A91]' : 'font-medium'}`}>
+              Market
+            </span>
+          </Link>
+
+          {/* Tab 5: Security Lab */}
+          <Link
+            to="/security-lab"
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
+              isActive('/security-lab')
+                ? 'text-[#663A91]'
+                : 'text-[#766B82] hover:text-[#261633]'
+            }`}
+          >
+            <FlaskConical className="w-5 h-5 mb-0.5" />
+            <span className={`text-[10px] ${isActive('/security-lab') ? 'font-bold text-[#663A91]' : 'font-medium'}`}>
+              Lab
+            </span>
+          </Link>
         </div>
-      )}
-    </nav>
+      </nav>
+    </>
   );
 };

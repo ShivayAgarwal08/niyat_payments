@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export type ShoppingMode = 'NORMAL' | 'PROTECTED';
+
 export const ParsedIntentSchema = z.object({
   productCategory: z.string(), // Milk, Laptop, Smartphone, Shoes, Groceries, etc.
   productName: z.string(),
@@ -12,10 +14,24 @@ export const ParsedIntentSchema = z.object({
   optionalPreferences: z.array(z.string()).default([]),
   permittedSubstitutions: z.array(z.string()).default([]),
   confidence: z.number().min(0).max(1).default(1),
-  ambiguityQuestion: z.string().optional()
+  ambiguityQuestion: z.string().nullable().optional()
 });
 
 export type ParsedIntent = z.infer<typeof ParsedIntentSchema>;
+
+export interface StructuredPurchaseIntent {
+  productCategory: string; // e.g. "Milk", "Laptop", "Smartphone"
+  productName: string;     // e.g. "Amul Taaza Milk", "MacBook Air"
+  preferredBrand: string;  // e.g. "Amul", "Apple"
+  variantOrModel: string;  // e.g. "Taaza Toned", "M2 8GB 256GB"
+  quantity: number;
+  unit: string;            // e.g. "Litre", "Unit", "Kg"
+  maxBudgetPaise: number;  // in integer paise (₹1 = 100 paise)
+  mandatoryRequirements: string[];
+  optionalPreferences: string[];
+  permittedSubstitutions: string[];
+  confidence?: number;
+}
 
 export interface SignedIntentContract {
   contractId: string;
@@ -32,7 +48,7 @@ export interface SignedIntentContract {
   nonce: string;
   createdAt: string;
   expiresAt: string;
-  signature: string;
+  signature: string; // HMAC-SHA256 signature
 }
 
 export interface PurchaseAuthorization {
@@ -59,6 +75,7 @@ export interface BlindVerifierInput {
   contract: SignedIntentContract;
   authorization: PurchaseAuthorization;
   merchantPayeeExpected?: string;
+  skipNonceClaim?: boolean;
 }
 
 export interface BlindVerifierDecision {
@@ -108,8 +125,47 @@ export interface ProductItem {
     pricePaise: number;
     observedDate: string;
     sourceMerchant: string;
+    sourceType?: string;
     isDemoData: boolean;
   }>;
+}
+
+export type MarketDecision =
+  | 'BUY_NOW'
+  | 'WAIT'
+  | 'REVIEW'
+  | 'INSUFFICIENT_DATA'
+  | 'DATA_UNAVAILABLE';
+
+export interface MarketAssessmentRecord {
+  id: string;
+  assessmentId: string;
+  contractId: string;
+  productId: string;
+  productTitle: string;
+  brand: string;
+  variant: string;
+  packageSizeBaseUnits: number;
+  baseUnit: string;
+  merchantId: string;
+  merchantName: string;
+  payeeAddress: string;
+  quantity: number;
+  basePricePaise: number;
+  deliveryFeePaise: number;
+  platformFeePaise: number;
+  discountPaise: number;
+  landedPricePaise: number;
+  pricePerStandardUnitPaise: number;
+  feeSkewBps: number;
+  decision: MarketDecision;
+  decisionReason: string;
+  requiresAcknowledgement: boolean;
+  bindingSignature: string;
+  isConsumed: boolean;
+  consumedAt?: string | null;
+  expiresAt: string;
+  createdAt: string;
 }
 
 export interface MarketIntelligenceReport {
@@ -118,6 +174,10 @@ export interface MarketIntelligenceReport {
   category: string;
   brand: string;
   variant: string;
+  assessmentId?: string;
+  decision?: MarketDecision;
+  decisionReason?: string;
+  requiresAcknowledgement?: boolean;
   offers: Array<{
     productId: string;
     merchantId: string;
@@ -128,7 +188,7 @@ export interface MarketIntelligenceReport {
     deliveryFeePaise: number;
     handlingFeePaise: number;
     discountPaise: number;
-    landedPricePaise: number; // base + delivery + handling - discount
+    landedPricePaise: number;
     pricePerUnitPaise: number;
     inStock: boolean;
     isRecommended: boolean;
@@ -138,9 +198,38 @@ export interface MarketIntelligenceReport {
     date: string;
     pricePaise: number;
     merchantName: string;
+    sourceType?: string;
     isDemoData: true;
   }>;
   historicalAveragePaise?: number;
   priceTrendAdvisory?: string;
   isDemoData: true;
+  trends?: {
+    window7Day?: {
+      available: boolean;
+      sampleCount: number;
+      averagePaise?: number;
+      trendDirection: 'RISING' | 'FALLING' | 'STABLE' | 'UNKNOWN';
+    };
+    window30Day?: {
+      available: boolean;
+      sampleCount: number;
+      averagePaise?: number;
+      medianPaise?: number;
+      diffFromMedianPercent?: number;
+    };
+    window90Day?: {
+      available: boolean;
+      sampleCount: number;
+      averagePaise?: number;
+    };
+  };
+  provenance?: {
+    isDemoData: true;
+    sourceType: string;
+    observationCount: number;
+    lastObservedDate: string;
+    freshnessHours: number;
+    disclaimer: string;
+  };
 }

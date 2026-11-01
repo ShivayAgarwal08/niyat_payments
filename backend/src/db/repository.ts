@@ -2,8 +2,13 @@ import { PrismaClient } from '@prisma/client';
 import {
   ProductItem,
   MarketIntelligenceReport,
-  SignedIntentContract
+  SignedIntentContract,
+  MarketAssessmentRecord
 } from '../types/index.js';
+import {
+  MarketIntelligenceEngine,
+  calculateFeeSkewBps
+} from '../services/marketIntelligenceService.js';
 import {
   SEED_MERCHANTS,
   SEED_PRODUCTS,
@@ -27,6 +32,10 @@ export interface SimulatedTxRecord {
   discountPaise: number;
   totalAmountPaise: number;
   contractId?: string;
+  assessmentId?: string;
+  marketDecision?: string;
+  marketDecisionReason?: string;
+  userAcknowledgedAdvisory?: boolean;
   verifierDecision?: string;
   verifierReasons?: string[];
   maliciousPrompt?: string;
@@ -63,9 +72,11 @@ export class MarketplaceRepository {
   private products: Map<string, ProductItem> = new Map();
   private merchants: Map<string, typeof SEED_MERCHANTS[0]> = new Map();
   private contracts: Map<string, SignedIntentContract> = new Map();
+  private assessments: Map<string, MarketAssessmentRecord> = new Map();
   private usedNonces: Set<string> = new Set();
   private transactions: SimulatedTxRecord[] = [];
   private securityRuns: SecurityScenarioRecord[] = [];
+  private marketEngine = new MarketIntelligenceEngine();
 
   constructor(options?: { forceMemoryOnly?: boolean; prismaClient?: PrismaClient | null }) {
     this.seedDefaults();
@@ -355,10 +366,18 @@ export class MarketplaceRepository {
 
     offers.sort((a, b) => a.landedPricePaise - b.landedPricePaise);
 
-    const bestOffer = offers.find(o => o.inStock) || offers[0];
+    // Prioritize exact brand & variant matches for recommendation
+    const exactMatches = offers.filter(o => {
+      const p = categoryProducts.find(cp => cp.id === o.productId);
+      return p && p.brand.toLowerCase() === product.brand.toLowerCase() &&
+             p.variant.toLowerCase() === product.variant.toLowerCase();
+    });
+
+    const candidatePool = exactMatches.length > 0 ? exactMatches : offers;
+    const bestOffer = candidatePool.find(o => o.inStock) || candidatePool[0] || offers[0];
     if (bestOffer) {
       bestOffer.isRecommended = true;
-      bestOffer.recommendationReason = `Lowest final landed price (₹${(bestOffer.landedPricePaise / 100).toFixed(2)}) including delivery and fees.`;
+      bestOffer.recommendationReason = `Lowest final landed price (₹${(bestOffer.landedPricePaise / 100).toFixed(2)}) for ${product.brand} ${product.variant} including delivery and fees.`;
     }
 
     const history = product.marketPrices ? product.marketPrices.map(h => ({
@@ -368,19 +387,17 @@ export class MarketplaceRepository {
       isDemoData: true as const
     })) : [];
 
-    let historicalAveragePaise: number | undefined;
-    let priceTrendAdvisory: string | undefined;
+    const deliveryFee = bestOffer ? bestOffer.deliveryFeePaise : product.merchant.deliveryFeePaise;
+    const platformFee = bestOffer ? bestOffer.handlingFeePaise : product.merchant.platformFeePaise;
+    const landedPrice = bestOffer ? bestOffer.landedPricePaise : (product.basePricePaise + deliveryFee + platformFee);
+    const feeSkewBps = calculateFeeSkewBps(deliveryFee, platformFee, landedPrice);
 
-    if (history.length >= 3) {
-      const sum = history.reduce((acc, h) => acc + h.pricePaise, 0);
-      historicalAveragePaise = Math.round(sum / history.length);
-      const currentPrice = product.basePricePaise;
-      if (currentPrice <= historicalAveragePaise) {
-        priceTrendAdvisory = `Current price is at or below the 30-day historical average of ₹${(historicalAveragePaise / 100).toFixed(2)}. DEMO DATA.`;
-      } else {
-        priceTrendAdvisory = `Advisory signal: Current price (₹${(currentPrice / 100).toFixed(2)}) is slightly above the 30-day synthetic average (₹${(historicalAveragePaise / 100).toFixed(2)}). DEMO DATA.`;
-      }
-    }
+    const evaluation = this.marketEngine.evaluateMarketWindows({
+      currentLandedPricePaise: landedPrice,
+      feeSkewBps,
+      isSubstituteVariant: false,
+      observations: history
+    });
 
     return {
       productId: product.id,
@@ -388,10 +405,15 @@ export class MarketplaceRepository {
       category: product.category,
       brand: product.brand,
       variant: product.variant,
+      decision: evaluation.decision,
+      decisionReason: evaluation.decisionReason,
+      requiresAcknowledgement: evaluation.requiresAcknowledgement,
       offers,
       historicalPriceObservations: history,
-      historicalAveragePaise,
-      priceTrendAdvisory,
+      historicalAveragePaise: evaluation.trends.window30Day.averagePaise,
+      priceTrendAdvisory: evaluation.decisionReason,
+      trends: evaluation.trends,
+      provenance: evaluation.provenance,
       isDemoData: true
     };
   }
@@ -481,6 +503,254 @@ export class MarketplaceRepository {
     }
     this.usedNonces.add(nonce);
     return true; // successfully claimed
+  }
+
+  // --- Market Assessment Methods ---
+  public async saveAssessment(assessment: MarketAssessmentRecord): Promise<void> {
+    const isProd = process.env.NODE_ENV === 'production';
+    this.assessments.set(assessment.assessmentId, assessment);
+
+    if (this.usePrisma && this.prisma) {
+      try {
+        await this.prisma.marketAssessment.upsert({
+          where: { assessmentId: assessment.assessmentId },
+          update: {
+            isConsumed: assessment.isConsumed,
+            consumedAt: assessment.consumedAt ? new Date(assessment.consumedAt) : null
+          },
+          create: {
+            assessmentId: assessment.assessmentId,
+            contractId: assessment.contractId,
+            productId: assessment.productId,
+            productTitle: assessment.productTitle,
+            brand: assessment.brand,
+            variant: assessment.variant,
+            packageSizeBaseUnits: assessment.packageSizeBaseUnits,
+            baseUnit: assessment.baseUnit,
+            merchantId: assessment.merchantId,
+            merchantName: assessment.merchantName,
+            payeeAddress: assessment.payeeAddress,
+            quantity: assessment.quantity,
+            basePricePaise: assessment.basePricePaise,
+            deliveryFeePaise: assessment.deliveryFeePaise,
+            platformFeePaise: assessment.platformFeePaise,
+            discountPaise: assessment.discountPaise,
+            landedPricePaise: assessment.landedPricePaise,
+            pricePerStandardUnitPaise: assessment.pricePerStandardUnitPaise,
+            feeSkewBps: assessment.feeSkewBps,
+            decision: assessment.decision,
+            decisionReason: assessment.decisionReason,
+            requiresAcknowledgement: assessment.requiresAcknowledgement,
+            bindingSignature: assessment.bindingSignature,
+            isConsumed: assessment.isConsumed,
+            consumedAt: assessment.consumedAt ? new Date(assessment.consumedAt) : null,
+            expiresAt: new Date(assessment.expiresAt),
+            createdAt: new Date(assessment.createdAt)
+          }
+        });
+        return;
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to persist market assessment in production: ${err.message || 'Database error'}`);
+        }
+        console.warn('Prisma saveAssessment failed, stored in memory:', err);
+      }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory assessment store is forbidden in production. PostgreSQL connection required.');
+    }
+  }
+
+  public async getAssessmentById(assessmentId: string): Promise<MarketAssessmentRecord | null> {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (this.usePrisma && this.prisma) {
+      try {
+        const a = await this.prisma.marketAssessment.findUnique({
+          where: { assessmentId }
+        });
+        if (a) {
+          return {
+            id: a.id,
+            assessmentId: a.assessmentId,
+            contractId: a.contractId,
+            productId: a.productId,
+            productTitle: a.productTitle,
+            brand: a.brand,
+            variant: a.variant,
+            packageSizeBaseUnits: a.packageSizeBaseUnits,
+            baseUnit: a.baseUnit,
+            merchantId: a.merchantId,
+            merchantName: a.merchantName,
+            payeeAddress: a.payeeAddress,
+            quantity: a.quantity,
+            basePricePaise: a.basePricePaise,
+            deliveryFeePaise: a.deliveryFeePaise,
+            platformFeePaise: a.platformFeePaise,
+            discountPaise: a.discountPaise,
+            landedPricePaise: a.landedPricePaise,
+            pricePerStandardUnitPaise: a.pricePerStandardUnitPaise,
+            feeSkewBps: a.feeSkewBps,
+            decision: a.decision as any,
+            decisionReason: a.decisionReason,
+            requiresAcknowledgement: a.requiresAcknowledgement,
+            bindingSignature: a.bindingSignature,
+            isConsumed: a.isConsumed,
+            consumedAt: a.consumedAt ? a.consumedAt.toISOString() : null,
+            expiresAt: a.expiresAt.toISOString(),
+            createdAt: a.createdAt.toISOString()
+          };
+        }
+        return null;
+      } catch (err: any) {
+        if (isProd) {
+          throw new Error(`Failed to query market assessment in production: ${err.message || 'Database error'}`);
+        }
+        console.warn('Prisma getAssessmentById failed, checking memory:', err);
+      }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory assessment store is forbidden in production. PostgreSQL connection required.');
+    }
+
+    return this.assessments.get(assessmentId) || null;
+  }
+
+  public async settleProtectedPurchaseAtomic(params: {
+    assessmentId: string;
+    nonce: string;
+    contractId: string;
+    tx: Omit<SimulatedTxRecord, 'id' | 'createdAt'>;
+  }): Promise<{ success: boolean; error?: string; txRecord?: SimulatedTxRecord }> {
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (this.usePrisma && this.prisma) {
+      try {
+        const result = await this.prisma.$transaction(async (tx) => {
+          // 1. Conditionally consume assessment in PostgreSQL
+          const updateCount = await tx.marketAssessment.updateMany({
+            where: {
+              assessmentId: params.assessmentId,
+              isConsumed: false
+            },
+            data: {
+              isConsumed: true,
+              consumedAt: new Date()
+            }
+          });
+
+          if (updateCount.count === 0) {
+            throw new Error('ASSESSMENT_ALREADY_CONSUMED');
+          }
+
+          // 2. Claim nonce with unique constraint
+          await tx.usedNonce.create({
+            data: {
+              nonce: params.nonce,
+              contractId: params.contractId
+            }
+          });
+
+          // 3. Resolve contract internal ID if applicable
+          let dbContractId: string | undefined;
+          if (params.tx.contractId) {
+            const dbContract = await tx.intentContract.findUnique({
+              where: { contractId: params.tx.contractId }
+            });
+            if (dbContract) dbContractId = dbContract.id;
+          }
+
+          // 4. Create SimulatedTransaction record
+          const dbTx = await tx.simulatedTransaction.create({
+            data: {
+              mode: params.tx.mode,
+              status: params.tx.status,
+              userRequest: params.tx.userRequest,
+              productId: params.tx.productId || null,
+              productTitle: params.tx.productTitle,
+              merchantId: params.tx.merchantId || null,
+              merchantName: params.tx.merchantName,
+              payeeAddress: params.tx.payeeAddress,
+              quantity: params.tx.quantity,
+              itemPricePaise: params.tx.itemPricePaise,
+              deliveryFeePaise: params.tx.deliveryFeePaise,
+              handlingFeePaise: params.tx.handlingFeePaise,
+              discountPaise: params.tx.discountPaise,
+              totalAmountPaise: params.tx.totalAmountPaise,
+              contractId: dbContractId || null,
+              assessmentId: params.assessmentId,
+              marketDecision: params.tx.marketDecision || null,
+              marketDecisionReason: params.tx.marketDecisionReason || null,
+              userAcknowledgedAdvisory: params.tx.userAcknowledgedAdvisory ?? null,
+              verifierDecision: params.tx.verifierDecision || null,
+              verifierReasons: params.tx.verifierReasons ? JSON.stringify(params.tx.verifierReasons) : null,
+              maliciousPrompt: params.tx.maliciousPrompt || null,
+              securityExplanation: params.tx.securityExplanation || null,
+              isDemoData: params.tx.isDemoData
+            }
+          });
+
+          const txRecord: SimulatedTxRecord = {
+            ...params.tx,
+            id: dbTx.id,
+            createdAt: dbTx.createdAt.toISOString()
+          };
+
+          return txRecord;
+        });
+
+        // Mirror in memory collections
+        this.usedNonces.add(params.nonce);
+        const memAss = this.assessments.get(params.assessmentId);
+        if (memAss) {
+          memAss.isConsumed = true;
+          memAss.consumedAt = new Date().toISOString();
+        }
+        this.transactions.unshift(result);
+
+        return { success: true, txRecord: result };
+      } catch (err: any) {
+        if (err.message === 'ASSESSMENT_ALREADY_CONSUMED') {
+          return { success: false, error: 'ASSESSMENT_ALREADY_CONSUMED' };
+        }
+        if (err.code === 'P2002' || err.message?.includes('Unique constraint')) {
+          return { success: false, error: 'NONCE_ALREADY_USED' };
+        }
+        if (isProd) {
+          console.error('CRITICAL: PostgreSQL settleProtectedPurchaseAtomic failed in production:', err);
+          throw new Error(`PostgreSQL atomic settlement failed in production: ${err.message || 'Database error'}`);
+        }
+        console.warn('Prisma settleProtectedPurchaseAtomic error, falling back to memory:', err);
+      }
+    }
+
+    if (isProd) {
+      throw new Error('CRITICAL: In-memory settlement is forbidden in production. Active PostgreSQL connection required.');
+    }
+
+    // In-memory atomic check
+    if (this.usedNonces.has(params.nonce)) {
+      return { success: false, error: 'NONCE_ALREADY_USED' };
+    }
+    const memAssessment = this.assessments.get(params.assessmentId);
+    if (!memAssessment || memAssessment.isConsumed) {
+      return { success: false, error: 'ASSESSMENT_ALREADY_CONSUMED' };
+    }
+
+    memAssessment.isConsumed = true;
+    memAssessment.consumedAt = new Date().toISOString();
+    this.usedNonces.add(params.nonce);
+
+    const txRecord: SimulatedTxRecord = {
+      ...params.tx,
+      id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString()
+    };
+    this.transactions.unshift(txRecord);
+
+    return { success: true, txRecord };
   }
 
   // --- Contract Methods ---
@@ -604,6 +874,10 @@ export class MarketplaceRepository {
             discountPaise: tx.discountPaise,
             totalAmountPaise: tx.totalAmountPaise,
             contractId: dbContractId || null,
+            assessmentId: tx.assessmentId || null,
+            marketDecision: tx.marketDecision || null,
+            marketDecisionReason: tx.marketDecisionReason || null,
+            userAcknowledgedAdvisory: tx.userAcknowledgedAdvisory ?? null,
             verifierDecision: tx.verifierDecision || null,
             verifierReasons: tx.verifierReasons ? JSON.stringify(tx.verifierReasons) : null,
             maliciousPrompt: tx.maliciousPrompt || null,

@@ -57,7 +57,9 @@ const ProtectedPrepareSchema = z.object({
 const ProtectedExecuteSchema = z.object({
   contract: z.record(z.any()),
   selectedOffer: z.record(z.any()),
+  assessmentId: z.string().min(1, 'assessmentId is required'),
   userApproved: z.boolean(),
+  userAcknowledgedAdvisory: z.boolean().optional(),
   customTotalAmountPaise: z.number().optional(),
   customPayeeAddress: z.string().optional(),
   customQuantity: z.number().optional()
@@ -202,7 +204,47 @@ apiRouter.post('/simulation/protected/execute', async (req: Request, res: Respon
     const body = ProtectedExecuteSchema.parse(req.body);
     const result = await protectedSimulator.executeProtectedPurchase(body as any);
     res.json({ success: true, ...result });
-  } catch (err) {
+  } catch (err: any) {
+    if (err.message === 'ADVISORY_ACKNOWLEDGEMENT_REQUIRED') {
+      res.status(400).json({
+        success: false,
+        code: 'ADVISORY_ACKNOWLEDGEMENT_REQUIRED',
+        error: 'Market intelligence advisory requires explicit user consent before payment execution.'
+      });
+      return;
+    }
+    if (err.message === 'ASSESSMENT_ALREADY_CONSUMED') {
+      res.status(409).json({
+        success: false,
+        code: 'ASSESSMENT_ALREADY_CONSUMED',
+        error: 'Market assessment has already been consumed by a transaction.'
+      });
+      return;
+    }
+    if (err.message === 'ASSESSMENT_EXPIRED') {
+      res.status(400).json({
+        success: false,
+        code: 'ASSESSMENT_EXPIRED',
+        error: 'Market assessment has expired. A fresh assessment must be prepared.'
+      });
+      return;
+    }
+    if (err.message === 'BINDING_SIGNATURE_MISMATCH' || err.message?.startsWith('BINDING_MISMATCH')) {
+      res.status(400).json({
+        success: false,
+        code: 'BINDING_SIGNATURE_MISMATCH',
+        error: 'Market assessment binding HMAC validation failed. Assessment does not match transaction parameters.'
+      });
+      return;
+    }
+    if (err.message === 'CONTRACT_NONCE_ALREADY_USED' || err.message === 'NONCE_ALREADY_USED') {
+      res.status(409).json({
+        success: false,
+        code: 'NONCE_ALREADY_USED',
+        error: 'Contract nonce has already been consumed. Replay attack blocked.'
+      });
+      return;
+    }
     next(err);
   }
 });

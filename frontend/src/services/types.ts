@@ -80,12 +80,54 @@ export interface BlindVerifierDecision {
   securityAlert?: string;
 }
 
+export type MarketDecision =
+  | 'BUY_NOW'
+  | 'WAIT'
+  | 'REVIEW'
+  | 'INSUFFICIENT_DATA'
+  | 'DATA_UNAVAILABLE';
+
+export interface MarketAssessmentRecord {
+  id: string;
+  assessmentId: string;
+  contractId: string;
+  productId: string;
+  productTitle: string;
+  brand: string;
+  variant: string;
+  packageSizeBaseUnits: number;
+  baseUnit: string;
+  merchantId: string;
+  merchantName: string;
+  payeeAddress: string;
+  quantity: number;
+  basePricePaise: number;
+  deliveryFeePaise: number;
+  platformFeePaise: number;
+  discountPaise: number;
+  landedPricePaise: number;
+  pricePerStandardUnitPaise: number;
+  feeSkewBps: number;
+  decision: MarketDecision;
+  decisionReason: string;
+  requiresAcknowledgement: boolean;
+  bindingSignature: string;
+  isConsumed: boolean;
+  consumedAt?: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export interface MarketIntelligenceReport {
   productId: string;
   productTitle: string;
   category: string;
   brand: string;
   variant: string;
+  assessmentId?: string;
+  decision?: MarketDecision;
+  decisionReason?: string;
+  requiresAcknowledgement?: boolean;
   offers: Array<{
     productId: string;
     merchantId: string;
@@ -106,11 +148,40 @@ export interface MarketIntelligenceReport {
     date: string;
     pricePaise: number;
     merchantName: string;
+    sourceType?: string;
     isDemoData: true;
   }>;
   historicalAveragePaise?: number;
   priceTrendAdvisory?: string;
   isDemoData: true;
+  trends?: {
+    window7Day?: {
+      available: boolean;
+      sampleCount: number;
+      averagePaise?: number;
+      trendDirection: 'RISING' | 'FALLING' | 'STABLE' | 'UNKNOWN';
+    };
+    window30Day?: {
+      available: boolean;
+      sampleCount: number;
+      averagePaise?: number;
+      medianPaise?: number;
+      diffFromMedianPercent?: number;
+    };
+    window90Day?: {
+      available: boolean;
+      sampleCount: number;
+      averagePaise?: number;
+    };
+  };
+  provenance?: {
+    isDemoData: true;
+    sourceType: string;
+    observationCount: number;
+    lastObservedDate: string;
+    freshnessHours: number;
+    disclaimer: string;
+  };
 }
 
 export interface NormalSimulationResult {

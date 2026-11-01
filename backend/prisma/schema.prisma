@@ -19,6 +19,7 @@ model Merchant {
   platformFeePaise Int                    @default(0)
   products         Product[]
   transactions     SimulatedTransaction[]
+  assessments      MarketAssessment[]
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 }
@@ -40,6 +41,7 @@ model Product {
   merchant               Merchant               @relation(fields: [merchantId], references: [id])
   marketPrices           MarketPrice[]
   transactions           SimulatedTransaction[]
+  assessments            MarketAssessment[]
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 
@@ -112,6 +114,10 @@ model SimulatedTransaction {
   totalAmountPaise  Int
   contractId        String?
   contract          IntentContract? @relation(fields: [contractId], references: [id])
+  assessmentId      String?
+  marketDecision    String?
+  marketDecisionReason String?
+  userAcknowledgedAdvisory Boolean?
   verifierDecision  String?         // "ALLOW", "ASK", "BLOCK"
   verifierReasons   String?         // JSON serialized string array
   maliciousPrompt   String?
@@ -121,6 +127,42 @@ model SimulatedTransaction {
 
   @@index([mode])
   @@index([createdAt])
+}
+
+model MarketAssessment {
+  id                        String    @id @default(uuid())
+  assessmentId              String    @unique
+  contractId                String
+  productId                 String
+  product                   Product   @relation(fields: [productId], references: [id])
+  productTitle              String
+  brand                     String
+  variant                   String
+  packageSizeBaseUnits      Int
+  baseUnit                  String
+  merchantId                String
+  merchant                  Merchant  @relation(fields: [merchantId], references: [id])
+  merchantName              String
+  payeeAddress              String
+  quantity                  Int
+  basePricePaise            Int
+  deliveryFeePaise          Int
+  platformFeePaise          Int
+  discountPaise             Int
+  landedPricePaise          Int
+  pricePerStandardUnitPaise Int
+  feeSkewBps                Int
+  decision                  String
+  decisionReason            String
+  requiresAcknowledgement   Boolean
+  bindingSignature          String
+  isConsumed                Boolean   @default(false)
+  consumedAt                DateTime?
+  expiresAt                 DateTime
+  createdAt                 DateTime  @default(now())
+
+  @@index([contractId])
+  @@index([isConsumed])
 }
 
 model SecurityTestRun {

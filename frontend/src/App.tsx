@@ -16,22 +16,25 @@ const AppLayout: React.FC = () => {
   const isSplash = location.pathname === '/';
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
-      {!isSplash && <Navbar />}
-      <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<SplashScreen />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/normal-mode" element={<NormalShoppingPage />} />
-          <Route path="/protected-mode" element={<ProtectedShoppingPage />} />
-          <Route path="/catalog" element={<ShoppingCatalogPage />} />
-          <Route path="/security-lab" element={<SecurityLabPage />} />
-          <Route path="/transactions" element={<TransactionHistoryPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="*" element={<Navigate to="/home" replace />} />
-        </Routes>
-      </main>
-      {!isSplash && <Footer />}
+    <div className="min-h-screen bg-[#ECE8F4] flex justify-center items-start sm:py-6 selection:bg-[#F3EDF9] selection:text-[#663A91]">
+      {/* Mobile App Shell — Max Width 540px, Centered with Subtle Shadow on Larger Displays */}
+      <div className="w-full max-w-[540px] min-h-screen sm:min-h-[92vh] bg-[#F3F1F8] sm:rounded-[32px] sm:shadow-plum sm:border sm:border-[#E8E2EF] flex flex-col relative overflow-x-hidden">
+        {!isSplash && <Navbar />}
+        <main className={`flex-1 ${!isSplash ? 'pb-24' : ''}`}>
+          <Routes>
+            <Route path="/" element={<SplashScreen />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/normal-mode" element={<NormalShoppingPage />} />
+            <Route path="/protected-mode" element={<ProtectedShoppingPage />} />
+            <Route path="/catalog" element={<ShoppingCatalogPage />} />
+            <Route path="/security-lab" element={<SecurityLabPage />} />
+            <Route path="/transactions" element={<TransactionHistoryPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/home" replace />} />
+          </Routes>
+        </main>
+        {!isSplash && <Footer />}
+      </div>
     </div>
   );
 };

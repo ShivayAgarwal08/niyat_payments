@@ -33,7 +33,7 @@ export class OpenRouterProvider implements IAIProvider {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 20000);
 
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {

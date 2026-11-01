@@ -97,6 +97,8 @@ describe('AI Provider Fallback & Resilience', () => {
     const geminiParse = vi.spyOn(GeminiProvider.prototype, 'parseIntent').mockRejectedValue(
       new Error('JSON Parse error: Unexpected token < in JSON at position 0')
     );
+    const groqConfig = vi.spyOn(GroqProvider.prototype, 'isConfigured').mockReturnValue(false);
+    const openRouterConfig = vi.spyOn(OpenRouterProvider.prototype, 'isConfigured').mockReturnValue(false);
 
     const result = await aiService.parseIntent('Buy 1 pair of Nike running shoes under ₹4,500');
     expect(result.provider).toBe('local_fallback');
@@ -104,9 +106,15 @@ describe('AI Provider Fallback & Resilience', () => {
 
     geminiConfig.mockRestore();
     geminiParse.mockRestore();
+    groqConfig.mockRestore();
+    openRouterConfig.mockRestore();
   });
 
   it('falls back to local deterministic parser when all remote providers fail or are unconfigured', async () => {
+    const geminiConfig = vi.spyOn(GeminiProvider.prototype, 'isConfigured').mockReturnValue(false);
+    const groqConfig = vi.spyOn(GroqProvider.prototype, 'isConfigured').mockReturnValue(false);
+    const openRouterConfig = vi.spyOn(OpenRouterProvider.prototype, 'isConfigured').mockReturnValue(false);
+
     const aiService = new AIService();
     const result = await aiService.parseIntent('Buy 2 litres of Amul Taaza milk under ₹150.');
 
@@ -114,6 +122,10 @@ describe('AI Provider Fallback & Resilience', () => {
     expect(result.intent.preferredBrand).toBe('Amul');
     expect(result.intent.quantity).toBe(2);
     expect(result.intent.maxBudgetPaise).toBe(15000);
+
+    geminiConfig.mockRestore();
+    groqConfig.mockRestore();
+    openRouterConfig.mockRestore();
   });
 
   it('reports provider status and circuit breaker telemetry correctly', () => {

@@ -147,21 +147,26 @@ export class BlindVerifier {
     } else if (needsConfirmation) {
       decision = 'ASK';
     } else {
-      // Atomic claim to eliminate race conditions / double spends
-      const claimed = await (this.nonceStore.claimNonceAtomic
-        ? this.nonceStore.claimNonceAtomic(contract.nonce, contract.contractId)
-        : (async () => {
-            if (await this.nonceStore.isNonceUsed(contract.nonce)) return false;
-            await this.nonceStore.markNonceUsed(contract.nonce, contract.contractId);
-            return true;
-          })());
-
-      if (!claimed) {
-        decision = 'BLOCK';
-        reasons.push(`CRITICAL: Concurrent replay race condition detected. Nonce ${contract.nonce} was claimed by another thread during verification.`);
-        securityAlert = 'Replay Attack Prevented: Concurrent nonce claim detected';
-      } else {
+      if (input.skipNonceClaim) {
+        // Nonce freshness was verified in Check 3; actual consumption is deferred to the atomic transaction
         reasons.push('All deterministic security checks passed: Valid signature, fresh nonce, exact product match, verified merchant payee, within budget, and user-approved.');
+      } else {
+        // Atomic claim to eliminate race conditions / double spends
+        const claimed = await (this.nonceStore.claimNonceAtomic
+          ? this.nonceStore.claimNonceAtomic(contract.nonce, contract.contractId)
+          : (async () => {
+              if (await this.nonceStore.isNonceUsed(contract.nonce)) return false;
+              await this.nonceStore.markNonceUsed(contract.nonce, contract.contractId);
+              return true;
+            })());
+
+        if (!claimed) {
+          decision = 'BLOCK';
+          reasons.push(`CRITICAL: Concurrent replay race condition detected. Nonce ${contract.nonce} was claimed by another thread during verification.`);
+          securityAlert = 'Replay Attack Prevented: Concurrent nonce claim detected';
+        } else {
+          reasons.push('All deterministic security checks passed: Valid signature, fresh nonce, exact product match, verified merchant payee, within budget, and user-approved.');
+        }
       }
     }
 

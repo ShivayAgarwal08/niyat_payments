@@ -4,49 +4,79 @@
 
 @layer base {
   body {
-    background-color: #F8FAFC;
-    color: #172033;
+    background-color: #ECE8F4;
+    color: #261633;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
-/* Custom minimal components */
+/* SwitchPay-inspired Clean Fintech Cards & Elements */
 .niyat-card {
   background-color: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  border: 1px solid #E8E2EF;
+  border-radius: 18px;
+  box-shadow: 0 2px 8px -2px rgba(53, 27, 77, 0.05), 0 1px 3px 0 rgba(53, 27, 77, 0.03);
+}
+
+.niyat-card-plum {
+  background: linear-gradient(145deg, #351B4D 0%, #261633 100%);
+  border: 1px solid rgba(232, 226, 239, 0.15);
+  border-radius: 18px;
+  color: #FFFFFF;
+  box-shadow: 0 8px 24px -4px rgba(53, 27, 77, 0.25);
 }
 
 .niyat-btn-primary {
-  background-color: #2563EB;
+  background-color: #663A91;
   color: #FFFFFF;
-  font-weight: 500;
-  border-radius: 8px;
+  font-weight: 600;
+  border-radius: 14px;
   transition: all 0.15s ease-in-out;
 }
 
 .niyat-btn-primary:hover {
-  background-color: #1D4ED8;
+  background-color: #552F7A;
+}
+
+.niyat-btn-primary:active {
+  transform: scale(0.98);
 }
 
 .niyat-btn-secondary {
   background-color: #FFFFFF;
-  color: #172033;
-  border: 1px solid #E2E8F0;
+  color: #261633;
+  border: 1px solid #E8E2EF;
   font-weight: 500;
-  border-radius: 8px;
+  border-radius: 14px;
   transition: all 0.15s ease-in-out;
 }
 
 .niyat-btn-secondary:hover {
-  background-color: #F8FAFC;
-  border-color: #CBD5E1;
+  background-color: #F3EDF9;
+  border-color: #D6CCE3;
+}
+
+.niyat-btn-secondary:active {
+  transform: scale(0.98);
 }
 
 /* Currency formatting utility */
 .currency-inr::before {
   content: '₹';
+}
+
+/* Custom scrollbar for mobile drawers */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D6CCE3;
+  border-radius: 4px;
 }
